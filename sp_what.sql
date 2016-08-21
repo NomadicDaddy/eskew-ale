@@ -18,6 +18,8 @@ create procedure dbo.[sp_what] (
 as
 begin
 
+set nocount, xact_abort on ;
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Procedure:	sp_what
 -- Author:		Phillip Beazley (phillip@beazley.org)
@@ -45,8 +47,6 @@ begin
 -- 08/20/2015	lordbeazley	Added filter and sort by hpid.
 -- 04/19/2016	lordbeazley	Fixed datediff overflow for really old spids.
 -----------------------------------------------------------------------------------------------------------------------
-
-set nocount on ;
 
 if (@filter is not null and @sort not in ('spid', 'hpid', 'login', 'host', 'db', 'ip')) set @filter = null ;
 
@@ -171,7 +171,8 @@ exec sp_MS_marksystemobject 'sp_what' ;
 go
 return ;
 
--- examples
+-- EXAMPLES
+
 exec [sp_what] ;
 --exec [sp_what] @sort = 'login' ;
 --exec [sp_what] @sort = 'reads' ;

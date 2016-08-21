@@ -18,6 +18,8 @@ create procedure dbo.[sp_loginSecurityCopier] (
 as
 begin
 
+set nocount, xact_abort on ;
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Procedure:	sp_loginSecurityCopier
 -- Author:		Phillip Beazley (phillip@beazley.org)
@@ -41,8 +43,6 @@ begin
 -- 02/20/2014	lordbeazley	Added option to output to path as textfile.
 -- 01/05/2015	lordbeazley	Added option to overwrite existing output file (default).
 -----------------------------------------------------------------------------------------------------------------------
-
-set nocount on ;
 
 -- user check
 if (@login is null) set @login = suser_sname() ;
@@ -297,6 +297,7 @@ go
 return ;
 
 -- EXAMPLES
+
 exec [sp_loginSecurityCopier] ;
 --exec [sp_loginSecurityCopier] @login = 'sa' ;
 --exec [sp_loginSecurityCopier] @login = 'someguy', @target = 'OTHERSERVER' ;

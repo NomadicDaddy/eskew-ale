@@ -16,6 +16,8 @@ create procedure dbo.[pr_topQs] (
 as
 begin
 
+set nocount, xact_abort on ;
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Procedure:	pr_topQs
 -- Author:		Phillip Beazley (phillip@beazley.org)
@@ -30,8 +32,6 @@ begin
 -- REVISION HISTORY ---------------------------------------------------------------------------------------------------
 -- 02/21/2014	lordbeazley	Initial creation.
 -----------------------------------------------------------------------------------------------------------------------
-
-set nocount on ;
 
 if (@since is null) set @since = GetDate() - 0.1 ;
 
@@ -112,6 +112,7 @@ go
 return ;
 
 -- EXAMPLES
+
 exec [pr_topQs]
 	@topcount = 10,
 	@type = 'time',
