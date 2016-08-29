@@ -9,7 +9,7 @@ declare @reset bit = 0 ;
 
 -- ALT+BREAK or kill to end...
 
-if (@reset = 1 or not exists (select 1 from INFORMATION_SCHEMA.TABLES where [table_name] = N'audit_login' and [table_type] = 'BASE TABLE'))
+if (@reset = 1 or not exists (select 1 from INFORMATION_SCHEMA.TABLES where [table_name] = N'tempStats' and [table_type] = 'BASE TABLE'))
 begin
 	if exists (select 1 from INFORMATION_SCHEMA.TABLES where [table_name] = N'tempStats' and [table_type] = 'BASE TABLE')
 		drop table dbo.[tempStats] ;
