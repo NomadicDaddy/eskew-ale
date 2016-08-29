@@ -1,0 +1,9 @@
+Type 0: adding additional filegroup/file/range (not a true switch function)				(expanding)
+
+Type 1: switching data into an existing non-partitioned table from a staging non-partitioned table	(refreshing)
+
+Type 2: switching data into an existing partition from a staging non-partitioned table			(loading)
+
+Type 3: switching data from an existing partition to a staging non-partitioned table			(archiving)
+
+Type 4: switching data from an existing partition to another partition					(moving)
