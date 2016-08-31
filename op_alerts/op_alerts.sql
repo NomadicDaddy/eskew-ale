@@ -5,6 +5,7 @@ set nocount, quoted_identifier, ansi_nulls on ;
 
 declare
 	@operator nvarchar(128)				= N'DBA',
+	@email nvarchar(128)				= 'phillip@beazley.org',
 	@production bit						= 1,											-- alert on t-sql syntax errors, invalid users, pk violations (production/qa/uat environments only)
 	@delay smallint						= 180,											-- seconds between alerts (180 = 3 minutes)
 	@delaySpace int						= 86400,										-- seconds between drive space alerts (86400 = 1 day)
@@ -17,6 +18,69 @@ declare
 	@prodErrors varchar(64)				= ',916,2627',									-- errors only in prod
 	@prodSeverities varchar(64)			= ',15' ;										-- severities only in prod
 
+-- add operator
+if not exists (select 1 from msdb.dbo.sysoperators where [name] = @operator)
+begin
+
+	exec msdb.dbo.[sp_add_operator]
+		@name = @operator,
+		@enabled = 1,
+		@weekday_pager_start_time = 0,
+		@weekday_pager_end_time = 235959,
+		@saturday_pager_start_time = 0,
+		@saturday_pager_end_time = 235959,
+		@sunday_pager_start_time = 0,
+		@sunday_pager_end_time = 235959,
+		@pager_days = 0,
+		@pager_address = null,
+		@email_address = @email,
+		@category_name = N'[Uncategorized]',
+		@netsend_address = null ;
+
+	if (@@error = 0) raiserror('Added operator ''%s''.', 0, 1, @operator) with nowait ;
+
+end
+else
+begin
+
+	exec msdb.dbo.sp_update_operator
+		@name = @operator,
+		@enabled = 1,
+		@weekday_pager_start_time = 0,
+		@weekday_pager_end_time = 235959,
+		@saturday_pager_start_time = 0,
+		@saturday_pager_end_time = 235959,
+		@sunday_pager_start_time = 0,
+		@sunday_pager_end_time = 235959,
+		@pager_days = 0,
+		@email_address = @email,
+		@pager_address = null,
+		@netsend_address = null ;
+
+	if (@@error = 0) raiserror('Updated operator ''%s''.', 0, 1, @operator) with nowait ;
+
+end
+
+-- set alert fail-safe address
+declare @inSS nvarchar(128) ;
+exec xp_instance_regread N'HKEY_LOCAL_MACHINE', N'SOFTWARE\Microsoft\\Microsoft SQL Server\\Instance Names\SQL\', N'MSSQLSERVER', @inSS output ;
+declare @key nvarchar(255) = N'SOFTWARE\Microsoft\\Microsoft SQL Server\\' + @inSS + N'\SQLServerAgent' ;
+exec xp_instance_regwrite N'HKEY_LOCAL_MACHINE', @key, N'AlertFailSafeEmailAddress', REG_SZ, @email ;
+if (@@error = 0) raiserror('Set failsafe operator address to ''%s''.', 0, 1, @email) with nowait ;
+exec master..sp_MSsetalertinfo @failsafeoperator = @operator, @notificationmethod = 1 ;
+if (@@error = 0) raiserror('Enabled failsafe for operator ''%s''.', 0, 1, @operator) with nowait ;
+declare @default_profile nvarchar(128) = (select sp.[name] from msdb.dbo.sysmail_profile [sp] inner join msdb.dbo.sysmail_principalprofile [pp] on sp.[profile_id] = pp.[profile_id] and pp.[is_default] = 1) ;
+exec msdb.dbo.sp_set_sqlagent_properties @email_save_in_sent_folder = 1, @databasemail_profile = @default_profile ;
+if (@@error = 0) raiserror('Enabled mail for profile ''%s''.', 0, 1, @default_profile) with nowait ;
+
+-- add maintenance category
+if not exists (select 1 from msdb.dbo.syscategories where [name] = N'Database Maintenance' and [category_class] = 1)
+begin
+	exec msdb.dbo.[sp_add_category] @class = N'JOB', @type = N'LOCAL', @name = N'Database Maintenance' ;
+	if (@@error = 0) raiserror('Added job category ''Database Maintenance''.', 0, 1) with nowait ;
+end
+
+-- specific alerts available for higher editions
 if (ServerProperty('EngineEdition') = 3)
 	set @alertedErrors = @alertedErrors + @enterpriseErrors
 else
