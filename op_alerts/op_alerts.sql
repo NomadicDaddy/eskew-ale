@@ -131,7 +131,7 @@ end
 -- WMI-BASED ALERTS
 -------------------------------------------------------------------------------
 -- DB Mirroring State Change		: when a mirroring event occurs
--- CPU Usage (SQL Server >95%)		: when SQL Server CPU usage exceeds 95%
+-- CPU Usage (SQL Server >95%)^		: when SQL Server CPU usage exceeds 95%
 -- Drive Space (<5% free)			: when drive space falls below 5%
 
 -------------------------------------------------------------------------------
@@ -318,7 +318,7 @@ set @alertMsg = N'WMI: CPU Usage (SQL) >' + Convert(nvarchar(8), @cpuAlarm) + '%
 set @wmiq = N'select * from __instanceModificationEvent within ' + Convert(nvarchar(8), @delay) + N' where TargetInstance ISA ''Win32_PerfFormattedData_PerfProc_Process'' and TargetInstance.Name = ''sqlservr'' and TargetInstance.PercentProcessorTime > ' + Convert(nvarchar(8), @cpuAlarm) ;
 exec msdb.dbo.[sp_add_alert]
 	@name = @alertMsg,
-	@enabled = 1,
+	@enabled = 0,
 	@delay_between_responses = @delay,
 	@include_event_description_in = 1,
 	@notification_message = @alertMsg,
