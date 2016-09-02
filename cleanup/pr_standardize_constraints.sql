@@ -43,7 +43,7 @@ declare
 	@prev nvarchar(max) = '',
 	@table nvarchar(128),
 	@constraint nvarchar(128),
-	@newconstraint nvarchar(128),
+	@newconstraint nvarchar(1285),
 	@column nvarchar(128),
 	@multi nvarchar(1024) = '',
 	@schema nvarchar(128) ;
