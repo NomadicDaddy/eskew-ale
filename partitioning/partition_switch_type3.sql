@@ -1,8 +1,11 @@
 ------------------------------------------------------------------------------------------------------------------------------------------------
--- switching out an old partition (e.g. archiving 2013 data)
+-- type 3: switching out an old partition (e.g. archiving 2014 data)
+-- useful for switching data from an existing partition to a staging non-partitioned table											(archiving)
 ------------------------------------------------------------------------------------------------------------------------------------------------
 
--- switch prep (fgs:r/w, -indexes, compression:same, check constraint:same as partitioning boundary)
+-- switch prep target: fgs:r/w, -indexes
+-- switch prep source: fg:same, pk:same, compression:same, check constraint:same as partitioning boundary for target
+
 use [master] ;
 go
 alter database [PartitionTesting] modify filegroup [fg_OrderTracking_parByDate_2011] read_write ;
@@ -31,29 +34,29 @@ go
 
 -- create empty staging table on source filegroup
 alter database [PartitionTesting] modify filegroup [fg_OrderTracking_parByDate_2013] default ;
+go
 select * into [PartitionTesting].dbo.[OrderTracking_parByDate_staging] from [PartitionTesting].dbo.[OrderTracking_parByDate] where 1 = 0 ;
+go
 alter database [PartitionTesting] modify filegroup [PRIMARY] default ;
 go
 
--- set compression and matching constraint
---alter table dbo.[OrderTracking_parByDate_staging] add constraint [pk_OrderTracking_parByDate_staging] primary key clustered ([OrderTrackingID] asc, [EventDateTime] asc) with (data_compression = page) on [fg_OrderTracking_parByDate_2013] ;
+-- add clustered index with matching compression
 alter table dbo.[OrderTracking_parByDate_staging] add constraint [pk_OrderTracking_parByDate_staging] primary key clustered ([OrderTrackingID] asc, [EventDateTime] asc) with (data_compression = page) on [fg_OrderTracking_parByDate_2013] ;
---alter table dbo.[OrderTracking_parByDate_staging] with check add constraint [matchRange] check ([EventDateTime] >= '2013-01-01 00:00:00.000' and [EventDateTime] <= '2013-12-31 23:59:59.9999999') ;
 go
 
 -- check counts
-select [p#] = ps.[partition_number], [rc] = ps.[row_count] from sys.dm_db_partition_stats [ps] where ps.[object_id] = object_id('OrderTracking_parByDate') order by ps.[partition_number] asc ;
-select [source] = Count(*) from dbo.[OrderTracking_parByDate] where [EventDateTime] >= '2013-01-01 00:00:00.000' and [EventDateTime] <= '2013-12-31 23:59:59.9999999' ;
-select [target] = Count(*) from dbo.[OrderTracking_parByDate_staging] ;
+select [ ] = case when ps.[partition_number] = 3 then '-->' else '' end, [p#] = ps.[partition_number], [rc] = ps.[row_count] from sys.dm_db_partition_stats [ps] where ps.[object_id] = object_id('OrderTracking_parByDate') and ps.[index_id] = 1 order by ps.[partition_number] asc ;
+select [Source Rowcount] = Count(*) from dbo.[OrderTracking_parByDate] where [EventDateTime] >= '2013-01-01 00:00:00.000' and [EventDateTime] <= '2013-12-31 23:59:59.9999999' ;
+select [Target Rowcount] = Count(*) from dbo.[OrderTracking_parByDate_staging] ;
 
 -- switch to target partition
 alter table dbo.[OrderTracking_parByDate] switch partition 3 to [OrderTracking_parByDate_staging] ;
 go
 
 -- check counts
-select [p#] = ps.[partition_number], [rc] = ps.[row_count] from sys.dm_db_partition_stats [ps] where ps.[object_id] = object_id('OrderTracking_parByDate') order by ps.[partition_number] asc ;
-select [source] = Count(*) from dbo.[OrderTracking_parByDate] where [EventDateTime] >= '2013-01-01 00:00:00.000' and [EventDateTime] <= '2013-12-31 23:59:59.9999999' ;
-select [target] = Count(*) from dbo.[OrderTracking_parByDate_staging] ;
+select [ ] = case when ps.[partition_number] = 3 then '-->' else '' end, [p#] = ps.[partition_number], [rc] = ps.[row_count] from sys.dm_db_partition_stats [ps] where ps.[object_id] = object_id('OrderTracking_parByDate') and ps.[index_id] = 1 order by ps.[partition_number] asc ;
+select [Source Rowcount] = Count(*) from dbo.[OrderTracking_parByDate] where [EventDateTime] >= '2013-01-01 00:00:00.000' and [EventDateTime] <= '2013-12-31 23:59:59.9999999' ;
+select [Target Rowcount] = Count(*) from dbo.[OrderTracking_parByDate_staging] ;
 
 -- remove old, unused partition
 alter partition function [pf_OrderTracking_parByDate] () merge range ('2013-12-31 23:59:59.9999999') ;

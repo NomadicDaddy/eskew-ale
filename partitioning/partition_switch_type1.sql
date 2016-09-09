@@ -1,5 +1,6 @@
 ------------------------------------------------------------------------------------------------------------------------------------------------
--- non-partitioned table switch
+-- type 1: non-partitioned table switch
+-- useful for switching data into an existing non-partitioned table from a staging non-partitioned table							(refreshing)
 ------------------------------------------------------------------------------------------------------------------------------------------------
 
 use [PartitionTesting] ;
@@ -15,11 +16,11 @@ select * from AdventureWorks.Sales.[OrderTracking] where [EventDateTime] between
 set identity_insert [PartitionTesting].dbo.[OrderTracking_staging] off ;
 
 -- create clustered pk on same filegroup as target
-alter table dbo.[OrderTracking_staging] add constraint [pk_OrderTrackingID_staging] primary key clustered ([OrderTrackingID] asc) on [PRIMARY] ;
+alter table dbo.[OrderTracking_staging] add constraint [pk_OrderTracking_staging] primary key clustered ([OrderTrackingID] asc) on [PRIMARY] ;
 
 -- verify counts
-select [target] = Count(*) from [PartitionTesting].dbo.[OrderTracking] ;
-select [source] = Count(*) from [PartitionTesting].dbo.[OrderTracking_staging] ;
+select [Target Rowcount] = Count(*) from dbo.[OrderTracking] ;
+select [Source Rowcount] = Count(*) from dbo.[OrderTracking_staging] ;
 
 -- truncate destination
 truncate table dbo.[OrderTracking] ;
@@ -28,8 +29,8 @@ truncate table dbo.[OrderTracking] ;
 alter table dbo.[OrderTracking_staging] switch to dbo.[OrderTracking] ;
 
 -- verify counts
-select [target] = Count(*) from [PartitionTesting].dbo.[OrderTracking] ;
-select [source] = Count(*) from [PartitionTesting].dbo.[OrderTracking_staging] ;
+select [Target Rowcount] = Count(*) from dbo.[OrderTracking] ;
+select [Source Rowcount] = Count(*) from dbo.[OrderTracking_staging] ;
 
 -- drop staging table
 drop table dbo.[OrderTracking_staging] ;

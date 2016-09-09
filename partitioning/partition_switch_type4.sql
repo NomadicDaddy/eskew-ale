@@ -1,8 +1,11 @@
 ------------------------------------------------------------------------------------------------------------------------------------------------
--- switching partitions between partitioned tables using same partition scheme
+-- type 4: switching partitions between partitioned tables using same partition scheme
+-- useful for switching data from an existing partition to another partition														(moving)
 ------------------------------------------------------------------------------------------------------------------------------------------------
 
--- switch prep (fgs:r/w, -indexes, compression:same, check constraint:same as partitioning boundary)
+-- switch prep target: fgs:r/w, -indexes
+-- switch prep source: ranges:same, fgs:same, pk:same, compression:same, check constraint:same as partitioning boundary for target
+
 use [master] ;
 go
 alter database [PartitionTesting] modify filegroup [fg_OrderTracking_parByDate_2011] read_write ;
@@ -31,29 +34,31 @@ go
 
 -- create target partitioned table on source filegroup
 alter database [PartitionTesting] modify filegroup [fg_OrderTracking_parByDate_2014] default ;
+go
 select * into [PartitionTesting].dbo.[OrderTracking_parByDate2] from [PartitionTesting].dbo.[OrderTracking_parByDate] where 1 = 0 ;
+go
 alter database [PartitionTesting] modify filegroup [PRIMARY] default ;
 go
+
+-- check counts
+select [ ] = case when ps.[partition_number] = 3 then '-->' else '' end, [p#] = ps.[partition_number], [rc] = ps.[row_count] from sys.dm_db_partition_stats [ps] where ps.[object_id] = object_id('OrderTracking_parByDate') order by ps.[partition_number] asc ;
+select [ ] = case when ps.[partition_number] = 3 then '-->' else '' end, [p#] = ps.[partition_number], [rc] = ps.[row_count] from sys.dm_db_partition_stats [ps] where ps.[object_id] = object_id('OrderTracking_parByDate2') order by ps.[partition_number] asc ;
+select [Target Rowcount] = Count(*) from dbo.[OrderTracking_parByDate] where [EventDateTime] >= '2014-01-01 00:00:00.000' and [EventDateTime] <= '2014-12-31 23:59:59.9999999' ;
+select [Source Rowcount] = Count(*) from dbo.[OrderTracking_parByDate2] ;
 
 -- move data to partition using same function/scheme and same compression as source
 alter table dbo.[OrderTracking_parByDate2] add constraint [pk_OrderTracking_parByDate_staging] primary key clustered ([OrderTrackingID] asc, [EventDateTime] asc) with (data_compression = page) on [ps_OrderTracking_parByDate] ([EventDateTime]) ;
 go
-
--- check counts
-select [p#] = ps.[partition_number], [rc] = ps.[row_count] from sys.dm_db_partition_stats [ps] where ps.[object_id] = object_id('OrderTracking_parByDate') order by ps.[partition_number] asc ;
-select [p#] = ps.[partition_number], [rc] = ps.[row_count] from sys.dm_db_partition_stats [ps] where ps.[object_id] = object_id('OrderTracking_parByDate2') order by ps.[partition_number] asc ;
-select [target] = Count(*) from dbo.[OrderTracking_parByDate] where [EventDateTime] >= '2014-01-01 00:00:00.000' and [EventDateTime] <= '2014-12-31 23:59:59.9999999' ;
-select [source] = Count(*) from dbo.[OrderTracking_parByDate2] ;
 
 -- switch to target partition
 alter table dbo.[OrderTracking_parByDate] switch partition 3 to [OrderTracking_parByDate2] partition 3 ;
 go
 
 -- check counts
-select [p#] = ps.[partition_number], [rc] = ps.[row_count] from sys.dm_db_partition_stats [ps] where ps.[object_id] = object_id('OrderTracking_parByDate') order by ps.[partition_number] asc ;
-select [p#] = ps.[partition_number], [rc] = ps.[row_count] from sys.dm_db_partition_stats [ps] where ps.[object_id] = object_id('OrderTracking_parByDate2') order by ps.[partition_number] asc ;
-select [target] = Count(*) from dbo.[OrderTracking_parByDate] where [EventDateTime] >= '2014-01-01 00:00:00.000' and [EventDateTime] <= '2014-12-31 23:59:59.9999999' ;
-select [source] = Count(*) from dbo.[OrderTracking_parByDate2] ;
+select [ ] = case when ps.[partition_number] = 3 then '-->' else '' end, [p#] = ps.[partition_number], [rc] = ps.[row_count] from sys.dm_db_partition_stats [ps] where ps.[object_id] = object_id('OrderTracking_parByDate') and ps.[index_id] = 1 order by ps.[partition_number] asc ;
+select [ ] = case when ps.[partition_number] = 3 then '-->' else '' end, [p#] = ps.[partition_number], [rc] = ps.[row_count] from sys.dm_db_partition_stats [ps] where ps.[object_id] = object_id('OrderTracking_parByDate2') and ps.[index_id] = 1 order by ps.[partition_number] asc ;
+select [Target Rowcount] = Count(*) from dbo.[OrderTracking_parByDate] where [EventDateTime] >= '2014-01-01 00:00:00.000' and [EventDateTime] <= '2014-12-31 23:59:59.9999999' ;
+select [Source Rowcount] = Count(*) from dbo.[OrderTracking_parByDate2] ;
 
 -- cleanup
 drop table dbo.[OrderTracking_parByDate2] ;

@@ -34,14 +34,17 @@ set @cmd = N'create database [PartitionTesting] containment = none
 exec sp_executesql @cmd ;
 go
 
--- populate tables for testing (just copying OrderTracking from Credit database)
+-- select Min([EventDateTime]), Max([EventDateTime]) from AdventureWorks.Sales.[OrderTracking] ;
+-- date range present: 2011 through 2014
+-- for date range, need partitions for 2011, 2012, 2013, 2014, and 2015 to start with (we'll add 2016 later in the switch demo)
+-- populate tables for testing (just copying Sales.OrderTracking from AdventureWorks database) (~18s)
 use [PartitionTesting] ;
 select * into dbo.[OrderTracking] from AdventureWorks.Sales.[OrderTracking]  ;	-- original for comparison
 select * into dbo.[OrderTracking_parByDate] from dbo.[OrderTracking] ;			-- version to be partitioned by date range (EventDateTime)
 select * into dbo.[OrderTracking_parByID] from dbo.[OrderTracking] ;			-- version to be partitioned by list (last digit of OrderTrackingID)
 go
 
--- create PKs to emulate existing tables to be modified
+-- create PKs to emulate existing tables to be modified (~14s)
 alter table dbo.[OrderTracking] add constraint [pk_OrderTracking] primary key clustered ([OrderTrackingID] asc) on [PRIMARY] ;
 alter table dbo.[OrderTracking_parByDate] add constraint [pk_OrderTracking_parByDate] primary key clustered ([OrderTrackingID] asc) on [PRIMARY] ;
 alter table dbo.[OrderTracking_parByID] add constraint [pk_OrderTracking_parByID] primary key clustered ([OrderTrackingID] asc) on [PRIMARY] ;
@@ -52,7 +55,7 @@ go
 -- 3. Establish value boundaries for the partition key. We're going to partition the first one on EventDateTime year and the other on last digit of OrderTrackingId.
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
--- unique index on old primary key because we're going to be changing the PK...
+-- unique index on old primary key because we're going to be changing the PK... (~2s)
 create unique nonclustered index [ux_OrderTracking_parByDate_OrderTrackingID] on dbo.[OrderTracking_parByDate] ([OrderTrackingID]) ;
 create unique nonclustered index [ux_OrderTracking_parByID_OrderTrackingID] on dbo.[OrderTracking_parByID] ([OrderTrackingID]) ;
 go
@@ -108,16 +111,32 @@ go
 -- 6. Create partition function based on value boundaries of your partition key.
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+-- remember your starting and ending points!
+-- using range right, the boundary is your starting point (first/least value and increasing to the right)
+-- using range leff, the boundard is your ending point (increasing from the left to the last/final value)
+
 -- datetime range boundary: 23:59:59.997
 -- datetime2 range boundary: 23:59:59.9999999
 
+--create partition function [pf_OrderTracking_parByDate] (datetime2) as range right for values (
+--	'20110101',
+--	'20120101',
+--	'20130101',		-- anything to the RIGHT of this (until the next boundary), so 20130101 through 20131231
+--	'20140101',
+--	'20150101'
+--) ;
 create partition function [pf_OrderTracking_parByDate] (datetime2) as range left for values (
 	'2011-12-31 23:59:59.9999999',
 	'2012-12-31 23:59:59.9999999',
-	'2013-12-31 23:59:59.9999999',
+	'2013-12-31 23:59:59.9999999',		-- anything to the LEFT of this (proceeding but not within a previous range), so after 20121231 and on or before 20131231
 	'2014-12-31 23:59:59.9999999',
 	'2015-12-31 23:59:59.9999999'
 ) ;
+
+-- for list-based partitioning, it may not matter which you choose
+-- in this case, there's never going to be another digit outside of our list (0-9)...
+
+--create partition function [pf_OrderTracking_parByID] (int) as range right for values (0, 1, 2, 3, 4, 5, 6, 7, 8, 9) ;
 create partition function [pf_OrderTracking_parByID] (int) as range left for values (0, 1, 2, 3, 4, 5, 6, 7, 8, 9) ;
 go
 
@@ -126,16 +145,17 @@ go
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 create partition scheme [ps_OrderTracking_parByDate] as partition [pf_OrderTracking_parByDate] to (
-	[fg_OrderTracking_parByDate_2011],
-	[fg_OrderTracking_parByDate_2012],
+	[fg_OrderTracking_parByDate_2011],		-- this filegroup maps to first value range in schema above
+	[fg_OrderTracking_parByDate_2012],		-- and so on...
 	[fg_OrderTracking_parByDate_2013],
 	[fg_OrderTracking_parByDate_2014],
 	[fg_OrderTracking_parByDate_2015],
-	[PRIMARY]
+	[PRIMARY]							-- must have as catch-all filegroup
 ) ;
+
 create partition scheme [ps_OrderTracking_parByID] as partition [pf_OrderTracking_parByID] to (
-	[fg_OrderTracking_parByID_0],
-	[fg_OrderTracking_parByID_1],
+	[fg_OrderTracking_parByID_0],			-- this filegroup maps to first value range in schema above
+	[fg_OrderTracking_parByID_1],			-- and so on...
 	[fg_OrderTracking_parByID_2],
 	[fg_OrderTracking_parByID_3],
 	[fg_OrderTracking_parByID_4],
@@ -144,7 +164,7 @@ create partition scheme [ps_OrderTracking_parByID] as partition [pf_OrderTrackin
 	[fg_OrderTracking_parByID_7],
 	[fg_OrderTracking_parByID_8],
 	[fg_OrderTracking_parByID_9],
-	[PRIMARY]
+	[PRIMARY]							-- must have as catch-all filegroup
 ) ;
 go
 
@@ -161,7 +181,7 @@ go
 alter table dbo.[OrderTracking_parByID] add [partkey] as [OrderTrackingID] % 10 persisted not null ;
 go
 
--- create composite clustered key on partition scheme (this physically moves the data into the appropriate partition filegroups)
+-- create composite clustered key (old pk + partition key) on partition scheme (this physically moves the data into the appropriate partition filegroups)
 alter table dbo.[OrderTracking_parByDate] add constraint [pk_OrderTracking_parByDate] primary key clustered ([OrderTrackingID] asc, [EventDateTime] asc) on [ps_OrderTracking_parByDate] ([EventDateTime]) ;
 alter table dbo.[OrderTracking_parByID] add constraint [pk_OrderTracking_parByID] primary key clustered ([OrderTrackingID] asc, [partkey] asc) on [ps_OrderTracking_parByID] ([partkey]) ;
 go
@@ -170,6 +190,11 @@ go
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- 9. Add compression as applicable.
+--
+-- Guidelines:
+--    Set to NONE if the table is actively written to.
+--    Set to ROW if the table is more read than write but they do still occur.
+--    Set to PAGE if the table is primarily reads or is read-only.
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 -- estimate space savings using compression, using partition 2 because 1 no longer holds data (~10s)
@@ -181,7 +206,7 @@ go
 
 -- even though we could save a lot, we're not going to compress any of the OrderTracking_parByID partitions because they'll all be active
 
--- set compression based on filegroup activity for date-based partitioning (~20s)
+-- set compression based on filegroup activity for date-based partitioning (~21s)
 alter index [pk_OrderTracking_parByDate] on dbo.[OrderTracking_parByDate] rebuild partition = all with (
 	sort_in_tempdb = on,
 	data_compression = page on partitions(1 to 5),		-- set inactive or locked/read-only to (page)
@@ -202,7 +227,7 @@ create nonclustered index [ix_OrderTracking_parByDate_pf2015_OrderTrackingID] on
 create nonclustered index [ix_OrderTracking_parByDate_pf2015_EventDateTime] on dbo.[OrderTracking_parByDate] ([EventDateTime] asc) where [EventDateTime] >= '2015-01-01 00:00:00.000' and [EventDateTime] <= '2015-12-31 23:59:59.9999999' on [ps_OrderTracking_parByDate] ([EventDateTime]) ;
 go
 
--- create indexes on non-date specific partitions (~4s)
+-- create indexes on non-date specific partitions (~6s)
 create nonclustered index [ix_OrderTracking_parByID_OrderTrackingID] on dbo.[OrderTracking_parByID] ([OrderTrackingID] asc)
 create nonclustered index [ix_OrderTracking_parByID_EventDateTime] on dbo.[OrderTracking_parByID] ([EventDateTime] asc)
 go
@@ -213,6 +238,7 @@ update statistics dbo.OrderTracking_parByID with fullscan ;
 go
 
 -- lock static partitions
+use [master] ;
 alter database [PartitionTesting] modify filegroup [fg_OrderTracking_parByDate_2011] read_only ;
 alter database [PartitionTesting] modify filegroup [fg_OrderTracking_parByDate_2012] read_only ;
 alter database [PartitionTesting] modify filegroup [fg_OrderTracking_parByDate_2013] read_only ;
@@ -221,6 +247,7 @@ alter database [PartitionTesting] modify filegroup [fg_OrderTracking_parByDate_2
 go
 
 -- confirm primary partition as default on date-based partitions
+use [PartitionTesting] ;
 if not exists (select 1 from sys.filegroups where [name] = 'PRIMARY' and [is_default] = 1)
 	alter database [PartitionTesting] modify filegroup [PRIMARY] default ;
 go
@@ -238,9 +265,9 @@ go
 
 declare @x bigint ;
 set statistics io on ;
-select @x = Count(*) from dbo.[OrderTracking] where [EventDateTime] between '2014-06-21' and '2014-12-14' ;
+select @x = Count(*) from dbo.[OrderTracking] where [EventDateTime] between '2014-06-21' and '2014-12-14' ;				-- dates fall within one partition
 select @x = Count(*) from dbo.[OrderTracking_parByDate] where [EventDateTime] between '2014-06-21' and '2014-12-14' ;
-select @x = Count(*) from dbo.[OrderTracking] where [EventDateTime] between '2012-06-21' and '2014-12-14' ;
+select @x = Count(*) from dbo.[OrderTracking] where [EventDateTime] between '2012-06-21' and '2014-12-14' ;				-- dates fall within three partitions
 select @x = Count(*) from dbo.[OrderTracking_parByDate] where [EventDateTime] between '2012-06-21' and '2014-12-14' ;
 set statistics io off ;
 go 2
@@ -258,6 +285,10 @@ go 2
 insert into dbo.[OrderTracking_parByDate] ([SalesOrderID], [CarrierTrackingNumber], [TrackingEventID], [EventDetails], [EventDateTime]) values (1, 1, 1, 1, '2017-02-01') ;
 go
 -- show after counts, pay attention to the rowcount of PRIMARY (1)
+
+-- delete that row for demo purposes
+delete from dbo.[OrderTracking_parByDate] where [SalesOrderID] = 1 and [EventDateTime] = '2017-02-01' ;
+go
 
 -- attempt to insert into a locked partition (filegroup)
 -- show before counts, pay attention to the rowcount of 2011 (9614)

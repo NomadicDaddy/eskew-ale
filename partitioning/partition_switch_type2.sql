@@ -1,8 +1,10 @@
 ------------------------------------------------------------------------------------------------------------------------------------------------
--- switching in a new partition (e.g. reloading 2014 data)
+-- type 2: switching in a new partition (e.g. reloading 2015 data)
+-- useful for switching data into an existing partition from a staging non-partitioned table										(loading)
 ------------------------------------------------------------------------------------------------------------------------------------------------
 
--- switch prep (fgs:r/w, -indexes, compression:same, check constraint:same as partitioning boundary for target)
+-- switch prep target: fgs:r/w, -indexes
+-- switch prep source: fg:same, pk:same, compression:same, check constraint:same as partitioning boundary for target
 
 use [master] ;
 go
@@ -32,13 +34,17 @@ go
 
 -- create empty staging table on target filegroup to hold the data we're switching in
 alter database [PartitionTesting] modify filegroup [fg_OrderTracking_parByDate_2014] default ;
+go
 select * into [PartitionTesting].dbo.[OrderTracking_parByDate_staging] from [PartitionTesting].dbo.[OrderTracking_parByDate] where 1 = 0 ;
+go
 alter database [PartitionTesting] modify filegroup [PRIMARY] default ;
 go
 
 -- set compression and matching constraint
 alter table dbo.[OrderTracking_parByDate_staging] add constraint [pk_OrderTracking_parByDate_staging] primary key clustered ([OrderTrackingID] asc, [EventDateTime] asc) with (data_compression = page) ;
+go
 alter table dbo.[OrderTracking_parByDate_staging] with check add constraint [matchRange] check ([EventDateTime] >= '2014-01-01 00:00:00.000' and [EventDateTime] <= '2014-12-31 23:59:59.9999999') ;
+go
 create unique nonclustered index [ux_OrderTracking_parByDate_staging] on dbo.[OrderTracking_parByDate_staging] ([OrderTrackingID]) ;
 go
 
@@ -50,9 +56,9 @@ set identity_insert [PartitionTesting].dbo.[OrderTracking_parByDate_staging] off
 go
 
 -- check counts
-select [p#] = ps.[partition_number], [rc] = ps.[row_count] from sys.dm_db_partition_stats [ps] where ps.[object_id] = object_id('OrderTracking_parByDate') order by ps.[partition_number] asc ;
-select [target] = Count(*) from dbo.[OrderTracking_parByDate] where [EventDateTime] >= '2014-01-01 00:00:00.000' and [EventDateTime] <= '2014-12-31 23:59:59.9999999' ;
-select [source] = Count(*) from dbo.[OrderTracking_parByDate_staging] ;
+select [ ] = case when ps.[partition_number] = 4 then '-->' else '' end, [p#] = ps.[partition_number], [rc] = ps.[row_count] from sys.dm_db_partition_stats [ps] where ps.[object_id] = object_id('OrderTracking_parByDate') and ps.[index_id] = 1 order by ps.[partition_number] asc ;
+select [Target Rowcount] = Count(*) from dbo.[OrderTracking_parByDate] where [EventDateTime] >= '2014-01-01 00:00:00.000' and [EventDateTime] <= '2014-12-31 23:59:59.9999999' ;
+select [Source Rowcount] = Count(*) from dbo.[OrderTracking_parByDate_staging] ;
 
 -- empty target partition
 delete from dbo.[OrderTracking_parByDate] where [EventDateTime] >= '2014-01-01 00:00:00.000' and [EventDateTime] <= '2014-12-31 23:59:59.9999999' ;
@@ -62,9 +68,9 @@ alter table dbo.[OrderTracking_parByDate_staging] switch to [OrderTracking_parBy
 go
 
 -- check counts
-select [p#] = ps.[partition_number], [rc] = ps.[row_count] from sys.dm_db_partition_stats [ps] where ps.[object_id] = object_id('OrderTracking_parByDate') order by ps.[partition_number] asc ;
-select [target] = Count(*) from dbo.[OrderTracking_parByDate] where [EventDateTime] >= '2014-01-01 00:00:00.000' and [EventDateTime] <= '2014-12-31 23:59:59.9999999' ;
-select [source] = Count(*) from dbo.[OrderTracking_parByDate_staging] ;
+select [ ] = case when ps.[partition_number] = 4 then '-->' else '' end, [p#] = ps.[partition_number], [rc] = ps.[row_count] from sys.dm_db_partition_stats [ps] where ps.[object_id] = object_id('OrderTracking_parByDate') and ps.[index_id] = 1 order by ps.[partition_number] asc ;
+select [Target Rowcount] = Count(*) from dbo.[OrderTracking_parByDate] where [EventDateTime] >= '2014-01-01 00:00:00.000' and [EventDateTime] <= '2014-12-31 23:59:59.9999999' ;
+select [Source Rowcount] = Count(*) from dbo.[OrderTracking_parByDate_staging] ;
 
 -- cleanup
 drop table dbo.[OrderTracking_parByDate_staging] ;

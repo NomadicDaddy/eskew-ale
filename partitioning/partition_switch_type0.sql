@@ -1,5 +1,6 @@
 ------------------------------------------------------------------------------------------------------------------------------------------------
--- adding a new filegroup for an upcoming new year
+-- type 0: adding a new filegroup for an upcoming new year
+-- useful for adding additional filegroup/file/range (not a true switch function)													(expanding)
 ------------------------------------------------------------------------------------------------------------------------------------------------
 
 use [master] ;

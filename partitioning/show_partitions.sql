@@ -9,6 +9,7 @@ select
 	[partition_scheme] = s.[name],
 	[p#] = p.[partition_number],
 	[filegroup] = fg.[name],
+	[file] = df.[physical_name],
 	[compression] = p.[data_compression_desc],
 	[rows] = p.[rows],
 	[pages] = au.[total_pages],
@@ -29,6 +30,7 @@ from
 	inner join sys.system_internals_allocation_units [au] on p.[partition_id] = au.[container_id]
 	inner join sys.destination_data_spaces [ds] on ds.[partition_scheme_id] = s.[data_space_id] and p.[partition_number] = ds.[destination_id]
 	inner join sys.filegroups [fg] on ds.[data_space_id] = fg.[data_space_id]
+	inner join sys.database_files [df] on ds.[data_space_id] = df.[data_space_id]
 	left outer join sys.partition_range_values [rv] on f.[function_id] = rv.[function_id] and p.[partition_number] = rv.[boundary_id]
 where
 	p.[index_id] = 1 and i.[index_id] = 1
