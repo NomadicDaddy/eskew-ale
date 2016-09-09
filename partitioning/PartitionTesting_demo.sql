@@ -13,6 +13,7 @@ exec xp_instance_regread N'HKEY_LOCAL_MACHINE', N'Software\Microsoft\MSSQLServer
 -- drop existing test database
 while (exists (select 1 from sys.databases where [name] = 'PartitionTesting'))
 begin
+	raiserror('Attemping to shut down and drop the existing [PartitionTesting] database...', 0, 1) with nowait ;
 	exec sp_sqlexec 'use [master] ; alter database [PartitionTesting] set offline with no_wait ;' ;
 	exec sp_sqlexec 'use [master] ; drop database [PartitionTesting] ;' ;
 	waitfor delay '000:00:01' ;
@@ -107,16 +108,44 @@ go
 -- 6. Create partition function based on value boundaries of your partition key.
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-create partition function [pf_OrderTracking_parByDate] (datetime2) as range right for values ('20110101', '20120101', '20130101', '20140101', '20150101') ;
-create partition function [pf_OrderTracking_parByID] (int) as range right for values (0, 1, 2, 3, 4, 5, 6, 7, 8, 9) ;
+-- datetime range boundary: 23:59:59.997
+-- datetime2 range boundary: 23:59:59.9999999
+
+create partition function [pf_OrderTracking_parByDate] (datetime2) as range left for values (
+	'2011-12-31 23:59:59.9999999',
+	'2012-12-31 23:59:59.9999999',
+	'2013-12-31 23:59:59.9999999',
+	'2014-12-31 23:59:59.9999999',
+	'2015-12-31 23:59:59.9999999'
+) ;
+create partition function [pf_OrderTracking_parByID] (int) as range left for values (0, 1, 2, 3, 4, 5, 6, 7, 8, 9) ;
 go
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- 7. Create partition scheme which determines the filegroups partitions live in.
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-create partition scheme [ps_OrderTracking_parByDate] as partition [pf_OrderTracking_parByDate] to ([PRIMARY], [fg_OrderTracking_parByDate_2011], [fg_OrderTracking_parByDate_2012], [fg_OrderTracking_parByDate_2013], [fg_OrderTracking_parByDate_2014], [fg_OrderTracking_parByDate_2015], [PRIMARY]) ;
-create partition scheme [ps_OrderTracking_parByID] as partition [pf_OrderTracking_parByID] to ([PRIMARY], [fg_OrderTracking_parByID_0], [fg_OrderTracking_parByID_1], [fg_OrderTracking_parByID_2], [fg_OrderTracking_parByID_3], [fg_OrderTracking_parByID_4], [fg_OrderTracking_parByID_5], [fg_OrderTracking_parByID_6], [fg_OrderTracking_parByID_7], [fg_OrderTracking_parByID_8], [fg_OrderTracking_parByID_9]) ;
+create partition scheme [ps_OrderTracking_parByDate] as partition [pf_OrderTracking_parByDate] to (
+	[fg_OrderTracking_parByDate_2011],
+	[fg_OrderTracking_parByDate_2012],
+	[fg_OrderTracking_parByDate_2013],
+	[fg_OrderTracking_parByDate_2014],
+	[fg_OrderTracking_parByDate_2015],
+	[PRIMARY]
+) ;
+create partition scheme [ps_OrderTracking_parByID] as partition [pf_OrderTracking_parByID] to (
+	[fg_OrderTracking_parByID_0],
+	[fg_OrderTracking_parByID_1],
+	[fg_OrderTracking_parByID_2],
+	[fg_OrderTracking_parByID_3],
+	[fg_OrderTracking_parByID_4],
+	[fg_OrderTracking_parByID_5],
+	[fg_OrderTracking_parByID_6],
+	[fg_OrderTracking_parByID_7],
+	[fg_OrderTracking_parByID_8],
+	[fg_OrderTracking_parByID_9],
+	[PRIMARY]
+) ;
 go
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -155,23 +184,22 @@ go
 -- set compression based on filegroup activity for date-based partitioning (~20s)
 alter index [pk_OrderTracking_parByDate] on dbo.[OrderTracking_parByDate] rebuild partition = all with (
 	sort_in_tempdb = on,
-	data_compression = row on partitions(1),			-- set minimally active to (row)
-	data_compression = page on partitions(2 to 5),		-- set inactive or locked/read-only to (page)
+	data_compression = page on partitions(1 to 5),		-- set inactive or locked/read-only to (page)
 	data_compression = none on partitions(6)			-- set active to (none)
 ) ;
 go
 
--- create filtered indexes on specific filegroups for partitions by date (~10s)
-create nonclustered index [ix_OrderTracking_parByDate_pf2011_OrderTrackingID] on dbo.[OrderTracking_parByDate] ([OrderTrackingID] asc) where [EventDateTime] >= '2011-01-01 00:00:00.000' and [EventDateTime] < '2012-01-01 00:00:00.000' on [fg_OrderTracking_parByDate_2011] ;
-create nonclustered index [ix_OrderTracking_parByDate_pf2011_EventDateTime] on dbo.[OrderTracking_parByDate] ([EventDateTime] asc) where [EventDateTime] >= '2011-01-01 00:00:00.000' and [EventDateTime] < '2012-01-01 00:00:00.000' on [fg_OrderTracking_parByDate_2011] ;
-create nonclustered index [ix_OrderTracking_parByDate_pf2012_OrderTrackingID] on dbo.[OrderTracking_parByDate] ([OrderTrackingID] asc) where [EventDateTime] >= '2012-01-01 00:00:00.000' and [EventDateTime] < '2013-01-01 00:00:00.000' on [fg_OrderTracking_parByDate_2012] ;
-create nonclustered index [ix_OrderTracking_parByDate_pf2012_EventDateTime] on dbo.[OrderTracking_parByDate] ([EventDateTime] asc) where [EventDateTime] >= '2012-01-01 00:00:00.000' and [EventDateTime] < '2013-01-01 00:00:00.000' on [fg_OrderTracking_parByDate_2012] ;
-create nonclustered index [ix_OrderTracking_parByDate_pf2013_OrderTrackingID] on dbo.[OrderTracking_parByDate] ([OrderTrackingID] asc) where [EventDateTime] >= '2013-01-01 00:00:00.000' and [EventDateTime] < '2014-01-01 00:00:00.000' on [fg_OrderTracking_parByDate_2013] ;
-create nonclustered index [ix_OrderTracking_parByDate_pf2013_EventDateTime] on dbo.[OrderTracking_parByDate] ([EventDateTime] asc) where [EventDateTime] >= '2013-01-01 00:00:00.000' and [EventDateTime] < '2014-01-01 00:00:00.000' on [fg_OrderTracking_parByDate_2013] ;
-create nonclustered index [ix_OrderTracking_parByDate_pf2014_OrderTrackingID] on dbo.[OrderTracking_parByDate] ([OrderTrackingID] asc) where [EventDateTime] >= '2014-01-01 00:00:00.000' and [EventDateTime] < '2015-01-01 00:00:00.000' on [fg_OrderTracking_parByDate_2014] ;
-create nonclustered index [ix_OrderTracking_parByDate_pf2014_EventDateTime] on dbo.[OrderTracking_parByDate] ([EventDateTime] asc) where [EventDateTime] >= '2014-01-01 00:00:00.000' and [EventDateTime] < '2015-01-01 00:00:00.000' on [fg_OrderTracking_parByDate_2014] ;
-create nonclustered index [ix_OrderTracking_parByDate_pf2015_OrderTrackingID] on dbo.[OrderTracking_parByDate] ([OrderTrackingID] asc) where [EventDateTime] >= '2015-01-01 00:00:00.000' and [EventDateTime] < '2016-01-01 00:00:00.000' on [fg_OrderTracking_parByDate_2015] ;
-create nonclustered index [ix_OrderTracking_parByDate_pf2015_EventDateTime] on dbo.[OrderTracking_parByDate] ([EventDateTime] asc) where [EventDateTime] >= '2015-01-01 00:00:00.000' and [EventDateTime] < '2016-01-01 00:00:00.000' on [fg_OrderTracking_parByDate_2015] ;
+-- create filtered indexes on specific filegroups for partitions by date (was: on [fg_OrderTracking_parByDate_20XX], now: on ps) (~10s)
+create nonclustered index [ix_OrderTracking_parByDate_pf2011_OrderTrackingID] on dbo.[OrderTracking_parByDate] ([OrderTrackingID] asc) where [EventDateTime] >= '2011-01-01 00:00:00.000' and [EventDateTime] <= '2011-12-31 23:59:59.9999999' on [ps_OrderTracking_parByDate] ([EventDateTime]) ;
+create nonclustered index [ix_OrderTracking_parByDate_pf2011_EventDateTime] on dbo.[OrderTracking_parByDate] ([EventDateTime] asc) where [EventDateTime] >= '2011-01-01 00:00:00.000' and [EventDateTime] <= '2011-12-31 23:59:59.9999999' on [ps_OrderTracking_parByDate] ([EventDateTime]) ;
+create nonclustered index [ix_OrderTracking_parByDate_pf2012_OrderTrackingID] on dbo.[OrderTracking_parByDate] ([OrderTrackingID] asc) where [EventDateTime] >= '2012-01-01 00:00:00.000' and [EventDateTime] <= '2012-12-31 23:59:59.9999999' on [ps_OrderTracking_parByDate] ([EventDateTime]) ;
+create nonclustered index [ix_OrderTracking_parByDate_pf2012_EventDateTime] on dbo.[OrderTracking_parByDate] ([EventDateTime] asc) where [EventDateTime] >= '2012-01-01 00:00:00.000' and [EventDateTime] <= '2012-12-31 23:59:59.9999999' on [ps_OrderTracking_parByDate] ([EventDateTime]) ;
+create nonclustered index [ix_OrderTracking_parByDate_pf2013_OrderTrackingID] on dbo.[OrderTracking_parByDate] ([OrderTrackingID] asc) where [EventDateTime] >= '2013-01-01 00:00:00.000' and [EventDateTime] <= '2013-12-31 23:59:59.9999999' on [ps_OrderTracking_parByDate] ([EventDateTime]) ;
+create nonclustered index [ix_OrderTracking_parByDate_pf2013_EventDateTime] on dbo.[OrderTracking_parByDate] ([EventDateTime] asc) where [EventDateTime] >= '2013-01-01 00:00:00.000' and [EventDateTime] <= '2013-12-31 23:59:59.9999999' on [ps_OrderTracking_parByDate] ([EventDateTime]) ;
+create nonclustered index [ix_OrderTracking_parByDate_pf2014_OrderTrackingID] on dbo.[OrderTracking_parByDate] ([OrderTrackingID] asc) where [EventDateTime] >= '2014-01-01 00:00:00.000' and [EventDateTime] <= '2014-12-31 23:59:59.9999999' on [ps_OrderTracking_parByDate] ([EventDateTime]) ;
+create nonclustered index [ix_OrderTracking_parByDate_pf2014_EventDateTime] on dbo.[OrderTracking_parByDate] ([EventDateTime] asc) where [EventDateTime] >= '2014-01-01 00:00:00.000' and [EventDateTime] <= '2014-12-31 23:59:59.9999999' on [ps_OrderTracking_parByDate] ([EventDateTime]) ;
+create nonclustered index [ix_OrderTracking_parByDate_pf2015_OrderTrackingID] on dbo.[OrderTracking_parByDate] ([OrderTrackingID] asc) where [EventDateTime] >= '2015-01-01 00:00:00.000' and [EventDateTime] <= '2015-12-31 23:59:59.9999999' on [ps_OrderTracking_parByDate] ([EventDateTime]) ;
+create nonclustered index [ix_OrderTracking_parByDate_pf2015_EventDateTime] on dbo.[OrderTracking_parByDate] ([EventDateTime] asc) where [EventDateTime] >= '2015-01-01 00:00:00.000' and [EventDateTime] <= '2015-12-31 23:59:59.9999999' on [ps_OrderTracking_parByDate] ([EventDateTime]) ;
 go
 
 -- create indexes on non-date specific partitions (~4s)
@@ -189,6 +217,7 @@ alter database [PartitionTesting] modify filegroup [fg_OrderTracking_parByDate_2
 alter database [PartitionTesting] modify filegroup [fg_OrderTracking_parByDate_2012] read_only ;
 alter database [PartitionTesting] modify filegroup [fg_OrderTracking_parByDate_2013] read_only ;
 alter database [PartitionTesting] modify filegroup [fg_OrderTracking_parByDate_2014] read_only ;
+alter database [PartitionTesting] modify filegroup [fg_OrderTracking_parByDate_2015] read_only ;
 go
 
 -- confirm primary partition as default on date-based partitions
@@ -225,8 +254,9 @@ go 2
 -- example of insert data that falls into specific partitions
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
--- show before counts, pay attention to the rowcount of PRIMARY (0), we're inserting something at the bottom of our range
-insert into dbo.[OrderTracking_parByDate] ([SalesOrderID], [CarrierTrackingNumber], [TrackingEventID], [EventDetails], [EventDateTime]) values (1, 1, 1, 1, '2010-02-01') ;
+-- show before counts, pay attention to the rowcount of PRIMARY (0), we're inserting something above our defined range
+insert into dbo.[OrderTracking_parByDate] ([SalesOrderID], [CarrierTrackingNumber], [TrackingEventID], [EventDetails], [EventDateTime]) values (1, 1, 1, 1, '2017-02-01') ;
+go
 -- show after counts, pay attention to the rowcount of PRIMARY (1)
 
 -- attempt to insert into a locked partition (filegroup)
@@ -237,9 +267,11 @@ go
 
 -- unlock partition (filegroup)
 alter database [PartitionTesting] modify filegroup [fg_OrderTracking_parByDate_2011] read_write ;
+go
 
 -- retry insert
 insert into dbo.[OrderTracking_parByDate] ([SalesOrderID], [CarrierTrackingNumber], [TrackingEventID], [EventDetails], [EventDateTime]) values (1, 1, 1, 1, '2011-02-01') ;
+go
 -- show after counts, pay attention to the rowcount of 2011 (9615)
 
 -- re-lock partition (filegroup)

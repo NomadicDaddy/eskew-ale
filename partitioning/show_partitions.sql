@@ -1,3 +1,6 @@
+use [PartitionTesting] ;
+go
+
 -- show partitioned tables
 select
 	[schema] = object_schema_name(i.[object_id]),
@@ -32,4 +35,8 @@ where
 order by
 	[table_name] asc,
 	p.[partition_number] asc ;
+go
+
+-- get out of the database so we're not locking our partition changes
+use [master] ;
 go
