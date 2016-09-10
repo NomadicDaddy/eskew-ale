@@ -113,7 +113,7 @@ go
 
 -- remember your starting and ending points!
 -- using range right, the boundary is your starting point (first/least value and increasing to the right)
--- using range leff, the boundard is your ending point (increasing from the left to the last/final value)
+-- using range left, the boundary is your ending point (increasing from the left to the last/final value)
 
 -- datetime range boundary: 23:59:59.997
 -- datetime2 range boundary: 23:59:59.9999999
@@ -121,7 +121,7 @@ go
 --create partition function [pf_OrderTracking_parByDate] (datetime2) as range right for values (
 --	'20110101',
 --	'20120101',
---	'20130101',		-- anything to the RIGHT of this (until the next boundary), so 20130101 through 20131231
+--	'20130101',							-- anything to the RIGHT of this (until the next boundary), so 20130101 through 20131231
 --	'20140101',
 --	'20150101'
 --) ;
@@ -145,16 +145,16 @@ go
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 create partition scheme [ps_OrderTracking_parByDate] as partition [pf_OrderTracking_parByDate] to (
-	[fg_OrderTracking_parByDate_2011],		-- this filegroup maps to first value range in schema above
+	[fg_OrderTracking_parByDate_2011],		-- this filegroup maps to first value range in the function above
 	[fg_OrderTracking_parByDate_2012],		-- and so on...
 	[fg_OrderTracking_parByDate_2013],
 	[fg_OrderTracking_parByDate_2014],
 	[fg_OrderTracking_parByDate_2015],
-	[PRIMARY]							-- must have as catch-all filegroup
+	[PRIMARY]								-- must have as catch-all filegroup
 ) ;
 
 create partition scheme [ps_OrderTracking_parByID] as partition [pf_OrderTracking_parByID] to (
-	[fg_OrderTracking_parByID_0],			-- this filegroup maps to first value range in schema above
+	[fg_OrderTracking_parByID_0],			-- this filegroup maps to first value range in the function above
 	[fg_OrderTracking_parByID_1],			-- and so on...
 	[fg_OrderTracking_parByID_2],
 	[fg_OrderTracking_parByID_3],
@@ -164,7 +164,7 @@ create partition scheme [ps_OrderTracking_parByID] as partition [pf_OrderTrackin
 	[fg_OrderTracking_parByID_7],
 	[fg_OrderTracking_parByID_8],
 	[fg_OrderTracking_parByID_9],
-	[PRIMARY]							-- must have as catch-all filegroup
+	[PRIMARY]								-- must have as catch-all filegroup
 ) ;
 go
 
@@ -187,6 +187,7 @@ alter table dbo.[OrderTracking_parByID] add constraint [pk_OrderTracking_parByID
 go
 
 -- show the partitions now (ooooo, ahhhhh)
+-- (load and execute show_partitions.sql)
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- 9. Add compression as applicable.
