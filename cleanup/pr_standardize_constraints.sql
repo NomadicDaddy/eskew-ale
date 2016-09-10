@@ -1,3 +1,5 @@
+-- todo: handle or ignore formatting on partitioned indexes
+
 set quoted_identifier on ;
 set ansi_nulls on ;
 go
@@ -366,4 +368,4 @@ return ;
 
 -- EXAMPLES
 
-exec dbo.[pr_standardize_constraints] @debug = 1, @force = 1, @include = 'PK,IX,UX,UK,DF' ;
+exec dbo.[pr_standardize_constraints] @debug = 1, @force = 0, @include = 'PK,IX,UX,UK,DF' ;
