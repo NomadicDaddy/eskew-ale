@@ -1,5 +1,5 @@
-#.\sqltail.ps1 -Instance 'RCHPWVMGMSQL02.prod.corpint.net\MANAGEMENT02' -Database 'SQLImplementations' -Table 'CheckScript'
-#.\sqltail.ps1 -Instance 'RCHPWVMGMSQL01.prod.corpint.net\MANAGEMENT01' -Database 'SQLImplementations' -Table 'foplog'
+#.\eskew-ale\powershell\sqltail.ps1 -Instance 'RCHPWVMGMSQL02.prod.corpint.net\MANAGEMENT02' -Database 'SQLImplementations' -Table 'CheckScript'
+#.\eskew-ale\powershell\sqltail.ps1 -Instance 'RCHPWVMGMSQL01.prod.corpint.net\MANAGEMENT01' -Database 'SQLImplementations' -Table 'foplog'
 
 <#
 .SYNOPSIS
