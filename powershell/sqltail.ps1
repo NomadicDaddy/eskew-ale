@@ -38,12 +38,9 @@ Param(
 # - filtered option on new rows mode
 
 function Import-Module-SQLPS {
-    #pushd and popd to avoid import from changing the current directory (ref: http://stackoverflow.com/questions/12915299/sql-server-2012-sqlps-module-changing-current-location-automatically)
-    #3>&1 puts warning stream to standard output stream (see https://connect.microsoft.com/PowerShell/feedback/details/297055/capture-warning-verbose-debug-and-host-output-via-alternate-streams)
-    #Out-Null blocks that output, so we don't see the annoying warnings described here: https://www.codykonior.com/2015/05/30/whats-wrong-with-sqlps/
-    Push-Location
-    Import-Module sqlps 3>&1 | Out-Null
-    Pop-Location
+	Push-Location						# Push and Pop to avoid import from changing the current directory (http://stackoverflow.com/questions/12915299/sql-server-2012-sqlps-module-changing-current-location-automatically)
+	Import-Module sqlps 3>&1 | Out-Null	# 3>&1 puts warning stream to standard output stream (https://connect.microsoft.com/PowerShell/feedback/details/297055/capture-warning-verbose-debug-and-host-output-via-alternate-streams)
+	Pop-Location						# Out-Null blocks that output, so we don't see the annoying warnings (https://www.codykonior.com/2015/05/30/whats-wrong-with-sqlps/)
 }
 if (!(Get-Module sqlps)) { Import-Module-SQLPS }
 
@@ -75,15 +72,5 @@ while($true) {
 	if ($Delay -gt 0) {
 		Start-Sleep -Milliseconds $Delay
 	}
-#	while ($Delay -gt 0) {
-#		$DelayLeft = $Delay - 1000
-#		if ($DelayLeft -gt 0) {
-#			Start-Sleep -Milliseconds 1000
-#			Write-Host '.' -NoNewLine
-#			$Delay = $DelayLeft
-#		} else {
-#			Start-Sleep -Milliseconds $Delay
-#			$Delay = -1
-#		}
-#	}
+
 }
