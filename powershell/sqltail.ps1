@@ -1,5 +1,5 @@
-#.\eskew-ale\powershell\sqltail.ps1 -Instance 'RCHPWVMGMSQL02.prod.corpint.net\MANAGEMENT02' -Database 'SQLImplementations' -Table 'CheckScript'
-#.\eskew-ale\powershell\sqltail.ps1 -Instance 'RCHPWVMGMSQL01.prod.corpint.net\MANAGEMENT01' -Database 'SQLImplementations' -Table 'foplog'
+#.\eskew-ale\powershell\sqltail.ps1 -Instance 'RCHPWVMGMSQL02.prod.corpint.net\MANAGEMENT02' -Database 'SQLImplementations' -Table 'CheckScript' -LoopMS 2000 -RowsBack 1
+#.\eskew-ale\powershell\sqltail.ps1 -Instance 'RCHPWVMGMSQL01.prod.corpint.net\MANAGEMENT01' -Database 'SQLImplementations' -Table 'foplog' -LoopMS 2500 -RowsBack 1
 
 <#
 .SYNOPSIS
@@ -45,10 +45,20 @@ function Import-Module-SQLPS {
 if (!(Get-Module sqlps)) { Import-Module-SQLPS }
 
 # get primary key column for tracking
-$PK = Invoke-SqlCmd -ServerInstance $INSTANCE -Database $DATABASE -Query ("select [column_name] from information_schema.table_constraints [tc] inner join information_schema.constraint_column_usage [ccu] on tc.[constraint_name] = ccu.[constraint_name] and tc.[constraint_type] = 'Primary Key' where tc.[table_name] = '{0}' ;" -f $TABLE) -QueryTimeout 30 -ErrorAction Stop | Select -Expand column_name
+try {
+	$PK = Invoke-SqlCmd -ServerInstance $INSTANCE -Database $DATABASE -Query ("select [column_name] from information_schema.table_constraints [tc] inner join information_schema.constraint_column_usage [ccu] on tc.[constraint_name] = ccu.[constraint_name] and tc.[constraint_type] = 'Primary Key' where tc.[table_name] = '{0}' ;" -f $TABLE) -QueryTimeout 30 -ErrorAction Stop | Select -Expand column_name
+} catch {
+	Write-Host 'Could not determine primary key of specified table. This is required for row tracking.' -ForegroundColor 'Red'
+	exit 1
+}
 
 # get current max key
-$MaxKey = Invoke-SqlCmd -ServerInstance $INSTANCE -Database $DATABASE -Query ('select Max([{0}]) as [MaxKey] from [{1}] ;' -f $PK, $TABLE) -QueryTimeout 30 -ErrorAction Stop | Select -Expand MaxKey
+try {
+	$MaxKey = Invoke-SqlCmd -ServerInstance $INSTANCE -Database $DATABASE -Query ('select Coalesce(Max([{0}]), 0) as [MaxKey] from [{1}] ;' -f $PK, $TABLE) -QueryTimeout 30 -ErrorAction Stop | Select -Expand MaxKey
+} catch {
+	Write-Host 'Unable to obtain the max key from specified table. Are you sure it exists?' -ForegroundColor 'Red'
+	exit 1
+}
 
 # this isn't guaranteed to grab X rows (gaps may exist in sequence) - a windowing function could be helpful here
 $PrevKey = $MaxKey - $RowsBack
@@ -57,9 +67,20 @@ while($true) {
 
 	$StartTime = Get-Date
 
-	$MaxKey = Invoke-SqlCmd -ServerInstance $INSTANCE -Database $DATABASE -Query ('select Max([{0}]) as [MaxKey] from [{1}] ;' -f $PK, $TABLE) -QueryTimeout 30 -ErrorAction Stop | Select -Expand MaxKey
+	try {
+		$MaxKey = Invoke-SqlCmd -ServerInstance $INSTANCE -Database $DATABASE -Query ('select Coalesce(Max([{0}]), 0) as [MaxKey] from [{1}] ;' -f $PK, $TABLE) -QueryTimeout 30 -ErrorAction Stop | Select -Expand MaxKey
+	} catch {
+		Write-Host 'Unable to obtain the max key from specified table. Are you sure it exists?' -ForegroundColor 'Red'
+		exit 1
+	}
+
 	if ($MaxKey -gt $PrevKey) {
-		Invoke-SqlCmd -ServerInstance $INSTANCE -Database $DATABASE -Query ('select * from [{0}] where [{1}] > {2} order by {1} asc ;' -f $TABLE, $PK, $PrevKey) -QueryTimeout 30 -ErrorAction Stop
+		try {
+			Invoke-SqlCmd -ServerInstance $INSTANCE -Database $DATABASE -Query ('select * from [{0}] where [{1}] > {2} order by {1} asc ;' -f $TABLE, $PK, $PrevKey) -QueryTimeout 30 -ErrorAction Stop
+		} catch {
+			Write-Host 'Unable to obtain new rows.' -ForegroundColor 'Red'
+			exit 1
+		}
 		foreach ($row in $rows) {
 			Write-Host $($row[0])
 		}
