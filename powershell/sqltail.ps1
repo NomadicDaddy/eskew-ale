@@ -46,7 +46,7 @@ if (!(Get-Module sqlps)) { Import-Module-SQLPS }
 
 # get primary key column for tracking
 try {
-	$PK = Invoke-SqlCmd -ServerInstance $INSTANCE -Database $DATABASE -Query ("select [column_name] from information_schema.table_constraints [tc] inner join information_schema.constraint_column_usage [ccu] on tc.[constraint_name] = ccu.[constraint_name] and tc.[constraint_type] = 'Primary Key' where tc.[table_name] = '{0}' ;" -f $TABLE) -QueryTimeout 30 -ErrorAction Stop | Select -Expand column_name
+	$PK = Invoke-SqlCmd -ServerInstance $INSTANCE -Database $DATABASE -Query ("use [{0}] ; select [column_name] from information_schema.table_constraints [tc] inner join information_schema.constraint_column_usage [ccu] on tc.[constraint_name] = ccu.[constraint_name] and tc.[constraint_type] = 'Primary Key' where tc.[table_name] = '{1}' ;" -f $DATABASE, $TABLE) -QueryTimeout 5 -ErrorAction Stop | Select -Expand column_name
 } catch {
 	Write-Host 'Could not determine primary key of specified table. This is required for row tracking.' -ForegroundColor 'Red'
 	exit 1
