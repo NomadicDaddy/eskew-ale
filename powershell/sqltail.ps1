@@ -12,6 +12,8 @@
 	The database to connect to.
 .PARAMETER Table
 	The table to monitor.
+.PARAMETER Fields
+	The fields you want returned from the table.
 .PARAMETER RowsBack
 	If specified, changes the initial rows to output from 5.
 .PARAMETER LoopMS
@@ -28,8 +30,10 @@ Param(
 	[Parameter(Mandatory = $true, Position = 2)]
 		[string]$Table,
 	[Parameter(Mandatory = $false, Position = 3)]
-		[int]$RowsBack = 5,
+		[string]$Fields = '*',
 	[Parameter(Mandatory = $false, Position = 4)]
+		[int]$RowsBack = 5,
+	[Parameter(Mandatory = $false, Position = 5)]
 		[int]$LoopMS = 1000
 )
 
@@ -76,7 +80,7 @@ while($true) {
 
 	if ($MaxKey -gt $PrevKey) {
 		try {
-			Invoke-SqlCmd -ServerInstance $INSTANCE -Database $DATABASE -Query ('select * from [{0}] where [{1}] > {2} order by {1} asc ;' -f $TABLE, $PK, $PrevKey) -QueryTimeout 30 -ErrorAction Stop
+			Invoke-SqlCmd -ServerInstance $INSTANCE -Database $DATABASE -Query ('select {0} from [{1}] where [{2}] > {3} order by {2} asc ;' -f $Fields, $TABLE, $PK, $PrevKey) -QueryTimeout 30 -ErrorAction Stop
 		} catch {
 			Write-Host 'Unable to obtain new rows.' -ForegroundColor 'Red'
 			exit 1
