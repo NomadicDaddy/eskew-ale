@@ -1,0 +1,1 @@
+@start powershell.exe -NoLogo -ExecutionPolicy Bypass -WindowStyle Hidden -File "powerclipd.ps1"

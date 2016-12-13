@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rules>
+	<rule>
+		<name>ALTER Object</name>
+		<description>All code objects should utilize the DROP/CREATE syntax. No ALTER object.</description>
+		<severity>Warning</severity>
+		<type1>match</type1>
+		<regex1>.*ALTER\s+.*</regex1>
+	</rule>
+	<rule>
+		<name>DROP/CREATE Object</name>
+		<enabled>false</enabled>
+		<description>All code objects should utilize the DROP/CREATE syntax. No CREATE object without DROP.</description>
+		<severity>Warning</severity>
+		<type1>match</type1>
+		<regex1>.*CREATE\s+(PROC|PROCEDURE|FUNCTION|TABLE|VIEW).*</regex1>
+		<join>and</join>
+		<type2>notmatch</type2>
+		<regex2>.*DROP\s+(PROC|PROCEDURE|FUNCTION|TABLE|VIEW).*</regex2>
+	</rule>
+	<rule>
+		<name>Cursor Usage</name>
+		<description>A cursor cannot be used in production.</description>
+		<severity>Warning</severity>
+		<type1>match</type1>
+		<regex1>.*\s+CURSOR\s+.*</regex1>
+	</rule>
+	<rule>
+		<name>Identity Specifies NOT FOR REPLICATION</name>
+		<description>The direction "NOT FOR REPLICATION" should be removed from identity declarations.</description>
+		<severity>Warning</severity>
+		<type1>match</type1>
+		<regex1>.*NOT FOR REPLICATION.*</regex1>
+	</rule>
+	<rule>
+		<name>Grant Execute for SP/F</name>
+		<enabled>false</enabled>
+		<description>All procs/functions require a GRANT EXECUTE.</description>
+		<severity>Warning</severity>
+		<type1>match</type1>
+		<regex1>.*CREATE\s+(PROC|PROCEDURE|FUNCTION).*</regex1>
+		<join>and</join>
+		<type2>notmatch</type2>
+		<regex2>.*GRANT\s+EXECUTE\s+.*</regex2>
+	</rule>
+	<rule>
+		<name>Grant Execute as DBO</name>
+		<description>Remove "AS DBO" from the GRANT EXECUTE command.</description>
+		<severity>Notice</severity>
+		<type1>match</type1>
+		<regex1>.*GRANT\s+EXECUTE\s+.*\s+AS\s+.*DBO.*</regex1>
+	</rule>
+	<rule>
+		<name>Using a MAX Datatype Length</name>
+		<description>Using a MAX length is strongly discouraged and will be questioned by the DBAs.</description>
+		<severity>Notice</severity>
+		<type1>match</type1>
+		<regex1>.*VARCHAR\(MAX\).*</regex1>
+	</rule>
+	<rule>
+		<name>Using a GOTO</name>
+		<description>Using a GOTO for flow control is strongly discouraged and will be questioned by the DBAs.</description>
+		<severity>Notice</severity>
+		<type1>match</type1>
+		<regex1>.*GOTO\s+.*</regex1>
+	</rule>
+	<rule>
+		<name>Using RECOMPILE</name>
+		<description>Using RECOMPILE is strongly discouraged and will be questioned by the DBAs.</description>
+		<severity>Notice</severity>
+		<type1>match</type1>
+		<regex1>.*\s+RECOMPILE\s+.*</regex1>
+	</rule>
+	<rule>
+		<name>Using SELECT *</name>
+		<description>Using SELECT * is strongly discouraged and will be questioned by the DBAs.</description>
+		<severity>Notice</severity>
+		<type1>match</type1>
+		<regex1>SELECT\s+\*\s+FROM\s+(?!sys)</regex1>
+	</rule>
+	<rule>
+		<name>Using EXEC vs sp_executesql</name>
+		<description>Using EXEC vs sp_executesql is strongly discouraged and will be questioned by the DBAs.</description>
+		<severity>Notice</severity>
+		<type1>match</type1>
+		<regex1>.*EXEC\s*\(.*</regex1>
+	</rule>
+	<rule>
+		<name>Using Column Numders in ORDER BY</name>
+		<description>Using column numbers vs column names in ORDER BY is strongly discouraged and will be questioned by the DBAs.</description>
+		<severity>Notice</severity>
+		<type1>match</type1>
+		<regex1>.*ORDER BY\s+1.*</regex1>
+	</rule>
+	<rule>
+		<name>Missing Datatype Precision and Scale</name>
+		<description>You must specify the precision and scale on numeric and decimal datatypes.</description>
+		<severity>Warning</severity>
+		<type1>match</type1>
+		<regex1>.*(numeric|decimal)\s*(,|;|$).*</regex1>
+	</rule>
+	<rule>
+		<name>VarChar Datatype Size Not Specified</name>
+		<description>You must specify the size for VARCHAR/NVARCHAR datatypes.</description>
+		<severity>Warning</severity>
+		<type1>match</type1>
+		<regex1>.*varchar\s+(,|;|$).*</regex1>
+	</rule>
+	<rule>
+		<name>Using sp_ for Procedure Name</name>
+		<description>You cannot use sp_ as a stored procedure prefix.</description>
+		<severity>Warning</severity>
+		<type1>match</type1>
+		<regex1>.*(PROC|PROCEDURE)\s*(|\[)sp_.*</regex1>
+	</rule>
+	<rule>
+		<name>Procedure Not Using SET NOCOUNT ON</name>
+		<description>You should use SET NOCOUNT ON in your stored procedures.</description>
+		<severity>Notice</severity>
+		<type1>match</type1>
+		<regex1>.*(PROC|PROCEDURE).*^(SET NOCOUNT ON).*</regex1>
+	</rule>
+	<rule>
+		<name>Using SET ROWCOUNT</name>
+		<description>You should not use SET ROWCOUNT. Deprecated.</description>
+		<severity>Warning</severity>
+		<type1>match</type1>
+		<regex1>.*SET ROWCOUNT.*</regex1>
+	</rule>
+	<rule>
+		<name>Using @@identity vs scope_identity()</name>
+		<description>You should not use @@IDENTITY. Use scope_identity() instead.</description>
+		<severity>Warning</severity>
+		<type1>match</type1>
+		<regex1>.*\@\@IDENTITY.*</regex1>
+	</rule>
+	<rule>
+		<name>Using Undocumented MS Procedures</name>
+		<description>You should not use undocumented procedures.</description>
+		<severity>Warning</severity>
+		<type1>match</type1>
+		<regex1>.*(sp_MS|sp_checknames|sp_columns_rowset|sp_enumoledbdatasources|sp_fixindex|sp_gettypestring|sp_msdependencies|sp_tempdbspace|sp_who2|xp_delete_file|xp_dirtree|xp_enum|xp_fileexist|xp_fixeddrives|xp_get_MAPI|xp_getnetname|xp_qv|xp_readerrorlog|xp_reg|xp_subdirs|xp_varbintohexstr).*</regex1>
+	</rule>
+	<rule>
+		<name>Wrong Naming Convention</name>
+		<enabled>false</enabled>
+		<description>You are not using our standard naming conventions. This will be questioned by the DBAs.</description>
+		<severity>Notice</severity>
+		<type1>match</type1>
+		<regex1></regex1>
+	</rule>
+	<rule>
+		<name>Missing Standard Columns</name>
+		<enabled>false</enabled>
+		<description>CREATE TABLE missing one or more standard columns. This will be questioned by the DBAs.</description>
+		<severity>Notice</severity>
+		<type1>match</type1>
+		<regex1></regex1>
+	</rule>
+	<rule>
+		<name>Using Float/Real Datatypes</name>
+		<description>Float and real datatypes are imprecise and their use will be questioned by the DBAs.</description>
+		<severity>Notice</severity>
+		<type1>match</type1>
+		<regex1>.*\s*(real|float).*</regex1>
+	</rule>
+	<rule>
+		<name>Using Deprecated Datatypes</name>
+		<description>TEXT/NTEXT/IMAGE datatypes should not be used and will be questioned by the DBAs.</description>
+		<severity>Notice</severity>
+		<type1>match</type1>
+		<regex1>.*\s*(text|ntext|image).*</regex1>
+	</rule>
+	<rule>
+		<name>Using MAXDOP</name>
+		<description>Use of MAXDOP should be carefully considered and will be questioned by the DBAs.</description>
+		<severity>Notice</severity>
+		<type1>match</type1>
+		<regex1>.*MAXDOP.*</regex1>
+	</rule>
+	<rule>
+		<name>Using xp_cmdshell</name>
+		<description>Use of xp_cmdshell should be taken VERY seriously and will be questioned by the DBAs.</description>
+		<severity>Notice</severity>
+		<type1>match</type1>
+		<regex1>.*xp_cmdshell.*</regex1>
+	</rule>
+	<rule>
+		<name>Using HINTS</name>
+		<description>Using hints should be considered carefully and will be questioned by the DBAs.</description>
+		<severity>Notice</severity>
+		<type1>match</type1>
+		<regex1>.*(WITH|OPTION)+\s+\(*(?!(NOWAIT|US))(?!\s+US).*</regex1>
+	</rule>
+</rules>
