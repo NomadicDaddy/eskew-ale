@@ -16,7 +16,7 @@ where
 	[spid] > 50
 	and [status] = 'sleeping'
 	and [net_address] <> ''
-	and [loginame] not in (select [service_account] from sys.dm_server_services where [servicename] like 'SQL Server (%' or [servicename] like 'SQL Server Agent (%')
+	and [loginame] not in (select distinct [service_account] from sys.dm_server_services where [servicename] like 'SQL Server (%' or [servicename] like 'SQL Server Agent (%')
 	and DateDiff(mi, [last_batch], getdate()) >= @howlong
 	and spid <> @@spid ;
 open sleepers ;

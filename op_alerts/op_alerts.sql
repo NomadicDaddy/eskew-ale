@@ -131,7 +131,7 @@ end
 -- WMI-BASED ALERTS
 -------------------------------------------------------------------------------
 -- DB Mirroring State Change		: when a mirroring event occurs
--- CPU Usage (SQL Server >95%)^		: when SQL Server CPU usage exceeds 95%
+-- CPU Usage (SQL Server >95%)		: when SQL Server CPU usage exceeds 95%
 -- Drive Space (<5% free)			: when drive space falls below 5%
 
 -------------------------------------------------------------------------------

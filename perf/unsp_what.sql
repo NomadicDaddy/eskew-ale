@@ -94,6 +94,7 @@ select
 			when r.[wait_type] is null then ''
 			else Convert(varchar(32), DateAdd(ms, r.[wait_time], 0), 114)
 		end,
+--	[dop] = eqmg.[dop],
 	[waittype] = Coalesce(r.[wait_type], ''),
 	spx.[waitresource],
 	[tx] = Coalesce(r.[open_transaction_count], 0),
@@ -115,6 +116,8 @@ from
 	outer apply sys.dm_exec_sql_text(sql_handle) [t]
 	outer apply sys.dm_exec_query_plan(plan_handle) [p]
 	left outer join sys.sysprocesses [spx] with (nolock) on s.[session_id] = spx.[spid]
+--	inner join sys.dm_os_waiting_tasks [owt] on s.[session_id] = owt.[session_id]
+--	inner join sys.dm_exec_query_memory_grants [eqmg] on owt.[session_id] = eqmg.[session_id]
 where
 	(
 		@all = 1
@@ -181,4 +184,3 @@ go
 --exec [sp_what] @all = 1 ;
 
 --select * into #sp_what from openrowset('SQLNCLI', 'Server=(local);Trusted_Connection=Yes;', 'exec dbo.[sp_what] ;')
-
