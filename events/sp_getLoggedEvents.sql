@@ -111,14 +111,12 @@ order by
 
 end
 go
-
-exec sp_MS_marksystemobject 'sp_getLoggedEvents' ;
-go
 return ;
 
 -- EXAMPLES
 
-exec [sp_getLoggedEvents] @hours = 24, @search = null, @important = 1, @verbose = 1 ;
---exec [sp_getLoggedEvents] @hours = 24, @search = null, @important = 0, @verbose = 1 ;
---exec [sp_getLoggedEvents] @hours = 24, @search = 'dump', @important = 0, @verbose = 1 ;
---exec [sp_getLoggedEvents] @hours = null, @search = 'Server process ID is', @important = 0, @verbose = 1 ;
+--exec dbo.[sp_getLoggedEvents] @hours = 1, @search = null, @important = 1, @verbose = 1 ;
+--exec dbo.[sp_getLoggedEvents] @hours = 6, @search = null, @important = 1, @verbose = 0 ;
+--exec dbo.[sp_getLoggedEvents] @hours = 24, @search = null, @important = 0, @verbose = 1 ;
+--exec dbo.[sp_getLoggedEvents] @hours = 24, @search = 'dump', @important = 0, @verbose = 1 ;
+--exec dbo.[sp_getLoggedEvents] @hours = null, @search = 'Server process ID is', @important = 0, @verbose = 1 ;
