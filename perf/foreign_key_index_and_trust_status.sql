@@ -2,9 +2,9 @@
 
 declare @Table varchar(64) = '' ;	-- leave blank or null to see fk status for all tables
 declare @ShowFixes bit = 1 ;		-- also create output of just fixes
-declare @ShowTrusted bit = 0 ;		-- show trusted foreign keys
-declare @ShowIndexed bit = 0 ;		-- show indexed foreign keys
-declare @ShowNFR bit = 0 ;			-- show foreign keys identified NOT_FOR_REPLICATION
+declare @ShowTrusted bit = 1 ;		-- show trusted foreign keys
+declare @ShowIndexed bit = 1 ;		-- show indexed foreign keys
+declare @ShowNFR bit = 1 ;		-- show foreign keys identified NOT_FOR_REPLICATION
 
 if object_id('tempdb..#fks') is not null
 	drop table [#fks] ;
