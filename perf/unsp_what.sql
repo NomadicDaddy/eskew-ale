@@ -13,7 +13,7 @@ set transaction isolation level read uncommitted ;
 declare
 	@all bit = 0,
 	@sleeping bit = 1,
-	@sort varchar(6) = 'spid',
+	@sort varchar(6) = 'io',
 	@filter nvarchar(256) = null
 --)
 --as
@@ -47,12 +47,16 @@ set nocount, xact_abort on ;
 -- 08/18/2015	pbeazley	Added sort by time option.
 -- 08/20/2015	pbeazley	Added filter and sort by hpid.
 -- 04/19/2016	pbeazley	Fixed datediff overflow for really old spids.
+-- 07/13/2018	pbeazley	Fixed int overflow for really large cpu loads.
 -----------------------------------------------------------------------------------------------------------------------
 
 if (@filter is not null and @sort not in ('spid', 'hpid', 'login', 'host', 'db', 'ip')) set @filter = null ;
 
 with [c] as (
 	select [session_id], [net_transport], [auth_scheme], [client_net_address], [net_packet_size] from sys.dm_exec_connections with (nolock)
+),
+[spx] as (
+	select [spid], [dbid], [cpu] = Sum([cpu] / 1000.0), [physical_io] = Sum([physical_io]) from sys.sysprocesses [spx] with (nolock) group by [spid], [dbid]
 )
 select
 	[spid] = s.[session_id],
@@ -82,21 +86,20 @@ select
 		end,
 	[duration] =
 		case
-			when DateDiff(s, s.[last_request_start_time], getdate()) = 0
-			then Convert(varchar(32), DateAdd(ms, 0, 0), 114)
+			when DateDiff(second, s.[last_request_start_time], getdate()) = 0
+			then Convert(varchar(32), DateAdd(millisecond, 0, 0), 114)
 			when DateDiff(day, s.[last_request_start_time], getdate()) > 0
-			then Convert(varchar(3), DateDiff(day, s.[last_request_start_time], getdate())) + 'd ' + Convert(varchar(32), DateAdd(ms, DateDiff(ms, s.[last_request_start_time], getdate() - DateDiff(day, s.[last_request_start_time], getdate())), 0), 114)
-			else Convert(varchar(32), DateAdd(ms, DateDiff(ms, s.[last_request_start_time], getdate()), 0), 114)
+			then Convert(varchar(3), DateDiff(day, s.[last_request_start_time], getdate())) + 'd ' + Convert(varchar(32), DateAdd(millisecond, DateDiff(millisecond, s.[last_request_start_time], getdate() - DateDiff(day, s.[last_request_start_time], getdate())), 0), 114)
+			else Convert(varchar(32), DateAdd(millisecond, DateDiff(millisecond, s.[last_request_start_time], getdate()), 0), 114)
 		end,
-	[cpu] = Convert(varchar(32), DateAdd(ms, spx.[cpu], 0), 114),
+	[cpu] = Replace(Convert(varchar(32), DateAdd(second, spx.[cpu], 0), 114), ':000', ''),
 	[waiting] =
 		case
 			when r.[wait_type] is null then ''
-			else Convert(varchar(32), DateAdd(ms, r.[wait_time], 0), 114)
+			else Convert(varchar(32), DateAdd(millisecond, r.[wait_time], 0), 114)
 		end,
 --	[dop] = eqmg.[dop],
 	[waittype] = Coalesce(r.[wait_type], ''),
-	spx.[waitresource],
 	[tx] = Coalesce(r.[open_transaction_count], 0),
 	[io] = spx.[physical_io],
 	[logicalreads] = s.[logical_reads],
@@ -115,11 +118,14 @@ from
 	left outer join sys.dm_exec_requests [r] with (nolock) on s.[session_id] = r.[session_id]
 	outer apply sys.dm_exec_sql_text(sql_handle) [t]
 	outer apply sys.dm_exec_query_plan(plan_handle) [p]
-	left outer join sys.sysprocesses [spx] with (nolock) on s.[session_id] = spx.[spid]
+--	left outer join sys.sysprocesses [spx] with (nolock) on s.[session_id] = spx.[spid]
+	left outer join [spx] on s.[session_id] = spx.[spid]
 --	inner join sys.dm_os_waiting_tasks [owt] on s.[session_id] = owt.[session_id]
 --	inner join sys.dm_exec_query_memory_grants [eqmg] on owt.[session_id] = eqmg.[session_id]
 where
-	(
+	spx.[spid] <> @@SPID
+	and (@sleeping = 1 or (@sleeping = 0 and s.[status] <> 'sleeping'))
+	and (
 		@all = 1
 		or s.[is_user_process] = 1
 		or (
@@ -147,8 +153,6 @@ where
 			else 0
 		end = 1
 	)
-	and (@sleeping = 1 or (@sleeping = 0 and s.[status] <> 'sleeping'))
-	and spx.[spid] <> @@SPID
 order by
 	[blocker] desc,
 	[active] desc,
@@ -163,7 +167,7 @@ order by
 	case when @sort = 'waits' then r.[wait_time] end desc,
 	case when @sort = 'io' then spx.[physical_io] end desc,
 	case when @sort = 'cpu' then spx.[cpu] end desc,
-	case when @sort = 'time' then DateDiff(s, s.[last_request_start_time], getdate()) end desc,
+	case when @sort = 'time' then DateDiff(second, s.[last_request_start_time], getdate()) end desc,
 	case when @sort = 'age' then s.[last_request_start_time] end asc,
 	s.[session_id] asc,
 	s.[login_name] asc,

@@ -14,7 +14,7 @@
 .NOTES
 	02/13/2017	pbeazley	Initial release.
 #>
-[CmdletBinding(SupportsShouldProcess = $false)]
+[CmdletBinding(SupportsShouldProcess = $false, PositionalBinding = $false, ConfirmImpact = 'Low')]
 Param(
 	[Parameter(Mandatory = $true, ValueFromPipeLine = $true, ValueFromPipeLineByPropertyName = $true, Position = 0)]
 		[string]$Instance,

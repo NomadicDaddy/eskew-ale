@@ -2,21 +2,22 @@ set quoted_identifier on ;
 set ansi_nulls on ;
 go
 
-use [master] ;
-go
+--use [master] ;
+--go
 
-if exists (select 1 from INFORMATION_SCHEMA.ROUTINES where [routine_schema] = 'dbo' and [routine_name] = 'sp_loginSecurityCopier')
-	drop procedure dbo.[sp_loginSecurityCopier] ;
-go
+--if exists (select 1 from INFORMATION_SCHEMA.ROUTINES where [routine_schema] = 'dbo' and [routine_name] = 'sp_loginSecurityCopier')
+--	drop procedure dbo.[sp_loginSecurityCopier] ;
+--go
 
-create procedure dbo.[sp_loginSecurityCopier] (
+--create procedure dbo.[sp_loginSecurityCopier] (
+declare
 	@login nvarchar(128) = null,
 	@target nvarchar(128) = null,
 	@path nvarchar(max) = null,
 	@overwrite tinyint = 1
-)
-as
-begin
+--)
+--as
+--begin
 
 set nocount, xact_abort on ;
 
@@ -82,19 +83,19 @@ insert into @lines
 select
 	[x] =
 		case
-			when (p.[type] = 'S' and @target not like '%\%')
-				then '    create login ' + QuoteName(Coalesce(@target, p.[name])) + ' with password = ' + master.sys.fn_varbintohexstr(l.[password_hash]) + ' hashed, sid = ' + master.sys.fn_varbintohexstr(p.[sid]) + ', default_database = ' + QuoteName(p.[default_database_name]) + ', check_policy = ' + case l.[is_policy_checked] when 1 then 'on' when 0 then 'off' else null end	+ ', check_expiration = ' + case l.[is_expiration_checked] when 1 then 'on' when 0 then 'off' else null end + ' ;'
-			when (p.[type] in ('U', 'G') or @target like '%\%')
-				then '    create login ' + QuoteName(Coalesce(@target, p.[name])) + ' from windows with default_database = ' + QuoteName(p.[default_database_name]) + ' ;'
+			when ([p].[type] = 'S' and @target not like '%\%')
+				then '    create login ' + QuoteName(Coalesce(@target, [p].[name])) + ' with password = ' + master.sys.fn_varbintohexstr([l].[password_hash]) + ' hashed, sid = ' + master.sys.fn_varbintohexstr([p].[sid]) + ', default_database = ' + QuoteName([p].[default_database_name]) + ', check_policy = ' + case [l].[is_policy_checked] when 1 then 'on' when 0 then 'off' else null end	+ ', check_expiration = ' + case [l].[is_expiration_checked] when 1 then 'on' when 0 then 'off' else null end + ' ;'
+			when ([p].[type] in ('U', 'G') or @target like '%\%')
+				then '    create login ' + QuoteName(Coalesce(@target, [p].[name])) + ' from windows with default_database = ' + QuoteName([p].[default_database_name]) + ' ;'
 			else ''
 		end
 from
 	master.sys.server_principals [p]
 	left outer join master.sys.sql_logins [l]
-		on p.[principal_id] = l.[principal_id]
+		on [p].[principal_id] = [l].[principal_id]
 where
-	p.[type] in ('S', 'U', 'G')
-	and p.[name] = @login ;
+	[p].[type] in ('S', 'U', 'G')
+	and [p].[name] = @login ;
 insert into @lines select [x] = '    alter login ' + QuoteName(Coalesce(@target, [name])) + ' disable ;' from master.sys.server_principals where [name] = @login and [is_disabled] = 1 ;
 insert into @lines values ('end') ;
 insert into @lines values ('') ;
@@ -103,30 +104,30 @@ insert into @lines values ('') ;
 insert into @lines values ('-- server-level security') ;
 insert into @lines
 select
-	[x] = Lower(rm.[state_desc]) + ' ' + Lower(rm.[permission_name]) + ' to ' + Coalesce(QuoteName(@target), Cast(QuoteName(u.[name] collate database_default) as nvarchar(256))) + ' ;'
+	[x] = Lower([rm].[state_desc]) + ' ' + Lower([rm].[permission_name]) + ' to ' + Coalesce(QuoteName(@target), Cast(QuoteName([u].[name] collate database_default) as nvarchar(256))) + ' ;'
 from
 	sys.server_permissions [rm]
 	inner join sys.server_principals [u]
-		on rm.[grantee_principal_id] = u.[principal_id]
+		on [rm].[grantee_principal_id] = [u].[principal_id]
 where
-	u.[name] = @login
+	[u].[name] = @login
 order by
-	rm.[permission_name] asc ;
+	[rm].[permission_name] asc ;
 insert into @lines values ('') ;
 
 -- server roles
 insert into @lines values ('-- server roles') ;
 insert into @lines
 select
-	[x] = 'exec master..sp_addsrvrolemember @loginame = N' + QuoteName(Coalesce(@target, m.[name]), '''') + ', @rolename = N' + QuoteName(r.[name], '''') + ' ;'
+	[x] = 'exec master..sp_addsrvrolemember @loginame = N' + QuoteName(Coalesce(@target, [m].[name]), '''') + ', @rolename = N' + QuoteName([r].[name], '''') + ' ;'
 from
 	sys.server_role_members [rm]
 	inner join sys.server_principals [r]
-		on rm.[role_principal_id] = r.[principal_id]
+		on [rm].[role_principal_id] = [r].[principal_id]
 	inner join sys.server_principals [m]
-		on rm.[member_principal_id] = m.[principal_id]
+		on [rm].[member_principal_id] = [m].[principal_id]
 where
-	m.[name] = @login ;
+	[m].[name] = @login ;
 insert into @lines values ('') ;
 
 -- create list of databases
@@ -158,7 +159,7 @@ begin
 	begin
 
 		insert into @lines values ('-- ' + QuoteName(@dbName) + ' --') ;
-		insert into @lines values ('if exists (select 1 from master.dbo.sysdatabases where [name] = ' + QuoteName(@dbName, '''') + ')') ;
+		insert into @lines values ('if exists (select 1 from [master].[dbo].[sysdatabases] where [name] = ' + QuoteName(@dbName, '''') + ')') ;
 		insert into @lines values ('begin') ;
 		insert into @lines values ('') ;
 		insert into @lines values ('    use ' + QuoteName(@dbName) + ' ;') ;
@@ -181,16 +182,17 @@ begin
 		exec('
 			use [' + @dbName + '] ;
 			select
-				[x] = ''    '' + Lower(p.[state_desc]) + '' '' + Lower(p.[permission_name]) + '' to ['' + ''' + @target + ''' + '']'' + case when p.[state] = ''W'' then '' with GRANT OPTION'' else '''' end + '' ;''
+				[x] = ''    '' + Lower([p].[state_desc]) + '' '' + Lower([p].[permission_name]) + '' to ['' + ''' + @target + ''' + '']'' + case when [p].[state] = ''W'' then '' with GRANT OPTION'' else '''' end + '' ;''
 			from
 				sys.database_permissions [p]
-				inner join sys.database_principals [u] on p.grantee_principal_id = u.[principal_id]
+				inner join sys.database_principals [u]
+					on [p].grantee_principal_id = [u].[principal_id]
 			where
-				p.[major_id] = 0
-				and u.[name] = ''' + @login + '''
+				[p].[major_id] = 0
+				and [u].[name] = ''' + @login + '''
 			order by
-				p.[permission_name] asc,
-				p.[state_desc] asc ;
+				[p].[permission_name] asc,
+				[p].[state_desc] asc ;
 		') ;
 		insert into @lines values ('') ;
 
@@ -200,13 +202,13 @@ begin
 		exec('
 			use [' + @dbName + '] ;
 			select
-				[x] = ''    exec sp_addrolemember @rolename = '' + QuoteName(USER_NAME(rm.[role_principal_id]), '''''''') + '', @membername = '' + QuoteName(''' + @target + ''', '''''''') + '' ;''
+				[x] = ''    exec sp_addrolemember @rolename = '' + QuoteName(USER_NAME([rm].[role_principal_id]), '''''''') + '', @membername = '' + QuoteName(''' + @target + ''', '''''''') + '' ;''
 			from
 				sys.database_role_members [rm]
 			where
-				USER_NAME(rm.[member_principal_id]) = ''' + @login + '''
+				USER_NAME([rm].[member_principal_id]) = ''' + @login + '''
 			order by
-				rm.[role_principal_id] asc ;
+				[rm].[role_principal_id] asc ;
 		') ;
 		insert into @lines values ('') ;
 
@@ -216,16 +218,16 @@ begin
 		exec('
 			use [' + @dbName + '] ;
 			select
-				[x] = ''    '' + Lower(r.[state_desc]) + '' '' + Lower(r.[permission_name]) + '' on ['' + db_name() + ''].['' + schema_name(o.[schema_id]) + ''].['' + o.[name] + ''] to [' + @target + '] ;'' collate database_default
+				[x] = ''    '' + Lower([r].[state_desc]) + '' '' + Lower([r].[permission_name]) + '' on ['' + db_name() + ''].['' + schema_name([o].[schema_id]) + ''].['' + [o].[name] + ''] to [' + @target + '] ;'' collate database_default
 			from
 				sys.database_permissions [r]
 				left outer join sys.database_Principals [u]
-					on r.[grantee_principal_id] = u.[principal_id]
+					on [r].[grantee_principal_id] = [u].[principal_id]
 				left outer join sys.all_objects [o]
-					on o.[object_id] = r.[major_id]
+					on [o].[object_id] = [r].[major_id]
 			where
-				r.[class_desc] <> ''DATABASE''
-				and u.[name] = ''' + @login + ''' ;
+				[r].[class_desc] <> ''DATABASE''
+				and [u].[name] = ''' + @login + ''' ;
 		') ;
 		insert into @lines values ('') ;
 
@@ -288,16 +290,16 @@ begin
 
 end
 
-end
-go
+--end
+--go
 
-exec sp_MS_marksystemobject 'sp_loginSecurityCopier' ;
-go
-return ;
+--exec sp_MS_marksystemobject 'sp_loginSecurityCopier' ;
+--go
+--return ;
 
 -- EXAMPLES
 
-exec [sp_loginSecurityCopier] ;
+--exec [sp_loginSecurityCopier] ;
 --exec [sp_loginSecurityCopier] @login = 'sa' ;
 --exec [sp_loginSecurityCopier] @login = 'someguy', @target = 'OTHERSERVER' ;
 --exec [sp_loginSecurityCopier] @login = 'someguy', @path = '\\FILESHARE\sql_backups\users\' ;

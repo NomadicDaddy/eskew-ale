@@ -2,17 +2,18 @@ set quoted_identifier on ;
 set ansi_nulls on ;
 go
 
-if exists (select 1 from INFORMATION_SCHEMA.ROUTINES where [routine_schema] = 'dbo' and [routine_name] = 'pr_standardize_constraints')
-	drop procedure dbo.[pr_standardize_constraints] ;
-go
+--if exists (select 1 from INFORMATION_SCHEMA.ROUTINES where [routine_schema] = 'dbo' and [routine_name] = 'pr_standardize_constraints')
+--	drop procedure dbo.[pr_standardize_constraints] ;
+--go
 
-create procedure dbo.[pr_standardize_constraints] (
+--create procedure dbo.[pr_standardize_constraints] (
+declare
 	@debug bit = 1,									-- print instead of execute
-	@force bit = 0,									-- force a rename even if matched
-	@include varchar(17) = 'PK,IX,UX,UK,DF,FK'			-- constraint types to rename
-)
-as
-begin
+	@force bit = 0,									-- generate a rename even if matched
+	@include varchar(17) = 'PK,IX,UX,UK,DF,FK'		-- constraint types to rename
+--)
+--as
+--begin
 
 set nocount, xact_abort on ;
 
@@ -164,7 +165,7 @@ begin
 				print @sql + char(13) + char(10) + 'go' ;
 				if (@debug = 0) exec (@sql) ;
 			end
-			else print '-- skipping duplicate of ' + @prev ;
+--			else print '-- skipping duplicate of ' + @prev ;
 
 			set @prev = @sql ;
 		end
@@ -240,7 +241,7 @@ begin
 				print @sql + char(13) + char(10) + 'go' ;
 				if (@debug = 0) exec (@sql) ;
 			end
-			else print '-- skipping duplicate of ' + @prev ;
+--			else print '-- skipping duplicate of ' + @prev ;
 
 			set @prev = @sql ;
 		end
@@ -316,7 +317,7 @@ begin
 				print @sql + char(13) + char(10) + 'go' ;
 				if (@debug = 0) exec (@sql) ;
 			end
-			else print '-- skipping duplicate of ' + @prev ;
+--			else print '-- skipping duplicate of ' + @prev ;
 
 			set @prev = @sql ;
 		end
@@ -392,7 +393,7 @@ begin
 				print @sql + char(13) + char(10) + 'go' ;
 				if (@debug = 0) exec (@sql) ;
 			end
-			else print '-- skipping duplicate of ' + @prev ;
+--			else print '-- skipping duplicate of ' + @prev ;
 
 			set @prev = @sql ;
 		end
@@ -442,7 +443,7 @@ begin
 			print @sql + char(13) + char(10) + 'go' ;
 			if (@debug = 0) exec (@sql) ;
 		end
-		else print '-- skipping duplicate of ' + @prev ;
+--		else print '-- skipping duplicate of ' + @prev ;
 
 		set @prev = @sql ;
 
@@ -452,10 +453,10 @@ begin
 	deallocate fkCursor ;
 end
 
-end
-go
-return ;
+--end
+--go
+--return ;
 
 -- EXAMPLES
 
-exec dbo.[pr_standardize_constraints] @debug = 1, @force = 0, @include = 'PK,IX,UX,UK,DF,FK' ;
+--exec dbo.[pr_standardize_constraints] @debug = 1, @force = 0, @include = 'PK,IX,UX,UK,DF,FK' ;

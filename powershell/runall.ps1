@@ -8,7 +8,7 @@
 .PARAMETER BreakOnFailure
 	If specified, changes the delay between checks from 1000 milliseconds.
 #>
-[cmdletbinding(SupportsShouldProcess = $false)]
+[CmdletBinding(SupportsShouldProcess = $false, PositionalBinding = $false, ConfirmImpact = 'Low')]
 Param(
 	[Parameter(Mandatory = $true, ValueFromPipeLine = $true, ValueFromPipeLineByPropertyName = $true, Position = 0)]
 		[string]$Instance,

@@ -2,19 +2,20 @@ set quoted_identifier on ;
 set ansi_nulls on ;
 go
 
-use [master] ;
-go
+--use [master] ;
+--go
 
-if exists (select 1 from INFORMATION_SCHEMA.ROUTINES where [routine_schema] = 'dbo' and [routine_name] = 'sp_gradShrink')
-	drop procedure dbo.[sp_gradShrink] ;
-go
+--if exists (select 1 from INFORMATION_SCHEMA.ROUTINES where [routine_schema] = 'dbo' and [routine_name] = 'sp_gradShrink')
+--	drop procedure dbo.[sp_gradShrink] ;
+--go
 
-create procedure dbo.[sp_gradShrink] (
+--create procedure dbo.[sp_gradShrink] (
+declare
 	@maxChunkSize int = 256,
 	@targetFile nvarchar(128) = null
-)
-as
-begin
+--)
+--as
+--begin
 
 set nocount, xact_abort on ;
 
@@ -74,12 +75,12 @@ begin
 end
 raiserror ('   FINAL SIZE : %6i', 0, 1, @currentSize) with nowait ;
 
-end
-go
+--end
+--go
 
-exec sp_MS_marksystemobject 'sp_gradShrink' ;
-go
-return ;
+--exec sp_MS_marksystemobject 'sp_gradShrink' ;
+--go
+--return ;
 
 -- EXAMPLES
 
