@@ -20,16 +20,16 @@ set nocount, xact_abort on ;
 -----------------------------------------------------------------------------------------------------------------------
 -- Procedure:	pr_standardize_constraints
 -- Author:		Phillip Beazley (phillip@beazley.org)
--- Date:		04/14/2017
+-- Date:		08/20/2018
 --
 -- Purpose:		Rename table constraints to conform to the following standard:
 --
---				PK:		pk_<schema>.<table_name>_<column>{-<column>}
+--				PK:		pk_<table_name>_<column>{-<column>}
 --				FK:		fk_<table_name>_<column>__<table_name>_<column>
---				IX:		ix_<schema>.<table_name>_<column>{-<column>}
---				UX:		ux_<schema>.<table_name>_<column>{-<column>}
---				UK:		uk_<schema>.<table_name>_<column>{-<column>}
---				DF:		df_<schema>.<table_name>_<column>{-<column>}
+--				IX:		ix_<table_name>_<column>{-<column>}
+--				UX:		ux_<table_name>_<column>{-<column>}
+--				UK:		uk_<table_name>_<column>{-<column>}
+--				DF:		df_<table_name>_<column>{-<column>}
 --
 -- Notes:		While a bad rename won't technically hurt anything, it's always best to generate the output, review
 --				it thoroughly, and ensure it's doing what you think it's doing before executing the output yourself.
@@ -42,6 +42,7 @@ set nocount, xact_abort on ;
 -- 08/20/2016	pbeazley	Created.
 -- 04/14/2017	pbeazley	Added FKs.
 -- 04/17/2017	pbeazley	Ignore constraints on FileTables (system-generated and unchangeable).
+-- 08/20/2018	pbeazley	Fixed bug in FK constraint rename.
 -----------------------------------------------------------------------------------------------------------------------
 
 declare
@@ -88,7 +89,8 @@ begin
 	while @@fetch_status = 0
 	begin
 
-		set @newconstraint = 'df_' + @schema + '.' + @table + '_' + @column ;
+--		set @newconstraint = 'df_' + @schema + '_' + @table + '_' + @column ;
+		set @newconstraint = 'df_' + @table + '_' + @column ;
 		if (@newconstraint <> @constraint or @force = 1)
 		begin
 			set @sql = 'exec sp_rename ''' + @schema + '.[' + @constraint + ']'', ''' + @newconstraint + ''', ''object'' ;' ;
@@ -154,7 +156,8 @@ begin
 		else
 			set @multi = @column ;
 
-		set @newconstraint = 'pk_' + @schema + '.' + @table + '_' + @multi ;
+--		set @newconstraint = 'pk_' + @schema + '_' + @table + '_' + @multi ;
+		set @newconstraint = 'pk_' + @table + '_' + @multi ;
 		if (@newconstraint <> @constraint or @force = 1)
 		begin
 	
@@ -230,7 +233,8 @@ begin
 		else
 			set @multi = @column ;
 
-		set @newconstraint = 'ix_' + @schema + '.' + @table + '_' + @multi ;
+--		set @newconstraint = 'ix_' + @schema + '.' + @table + '_' + @multi ;
+		set @newconstraint = 'ix_' + @table + '_' + @multi ;
 		if (@newconstraint <> @constraint or @force = 1)
 		begin
 	
@@ -306,7 +310,8 @@ begin
 		else
 			set @multi = @column ;
 
-		set @newconstraint = 'ux_' + @schema + '.' + @table + '_' + @multi ;
+--		set @newconstraint = 'ux_' + @schema + '.' + @table + '_' + @multi ;
+		set @newconstraint = 'ux_' + @table + '_' + @multi ;
 		if (@newconstraint <> @constraint or @force = 1)
 		begin
 
@@ -382,7 +387,8 @@ begin
 		else
 			set @multi = @column ;
 
-		set @newconstraint = 'uk_' + @schema + '.' + @table + '_' + @multi ;
+--		set @newconstraint = 'uk_' + @schema + '.' + @table + '_' + @multi ;
+		set @newconstraint = 'uk_' + @table + '_' + @multi ;
 		if (@newconstraint <> @constraint or @force = 1)
 		begin
 
@@ -418,7 +424,7 @@ begin
 		sys.foreign_keys [fk]
 		inner join sys.tables [t] on fk.[parent_object_id] = t.[object_id]
 		inner join sys.schemas [s] on fk.[schema_id] = s.[schema_id]
-		inner join sys.foreign_key_columns [fkc] on fk.[parent_object_id] = fkc.[parent_object_id]
+		inner join sys.foreign_key_columns [fkc] on fk.[parent_object_id] = fkc.[parent_object_id] and fk.[referenced_object_id] = fkc.[referenced_object_id]
 		inner join sys.columns [c1] on fkc.[parent_object_id] = c1.[object_id] and fkc.[parent_column_id] = c1.[column_id]
 		inner join sys.columns [c2] on fkc.[referenced_object_id] = c2.[object_id] and fkc.[referenced_column_id] = c2.[column_id]
 	where
@@ -430,6 +436,8 @@ begin
 			or fk.[name] <> 'fk_' + object_name(fk.[parent_object_id]) + '_' + c1.[name] + '__' + object_name(fk.[referenced_object_id]) + '_' + c2.[name] collate Latin1_General_CS_AS
 		)
 	order by
+		s.[name] asc,
+		fk.[name] asc,
 		[corrected_name] asc ;
 	open fkCursor ;
 	fetch next from fkCursor into @schema, @current_name, @corrected_name ;
