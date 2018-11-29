@@ -39,10 +39,10 @@ set nocount, xact_abort on ;
 -- Todo:		handle or ignore formatting on partitioned indexes
 --
 -- REVISION HISTORY ---------------------------------------------------------------------------------------------------
--- 08/20/2016	pbeazley	Created.
--- 04/14/2017	pbeazley	Added FKs.
--- 04/17/2017	pbeazley	Ignore constraints on FileTables (system-generated and unchangeable).
--- 08/20/2018	pbeazley	Fixed bug in FK constraint rename.
+-- 08/20/2016	lordbeazley	Created.
+-- 04/14/2017	lordbeazley	Added FKs.
+-- 04/17/2017	lordbeazley	Ignore constraints on FileTables (system-generated and unchangeable).
+-- 08/20/2018	lordbeazley	Fixed bug in FK constraint rename.
 -----------------------------------------------------------------------------------------------------------------------
 
 declare

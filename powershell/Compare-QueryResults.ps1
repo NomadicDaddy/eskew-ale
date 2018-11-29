@@ -8,7 +8,7 @@
 .EXAMPLE
 	Compare-QueryResults -SourceQuery 'select @@version ;' -SourceInstance m1 -SourceInstance m2
 .NOTES
-	06/19/2017	pbeazley	Initial release.
+	06/19/2017	lordbeazley	Initial release.
 #>
 [CmdletBinding(SupportsShouldProcess = $false, PositionalBinding = $false, ConfirmImpact = 'Low')]
 Param(

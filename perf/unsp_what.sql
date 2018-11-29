@@ -34,20 +34,20 @@ set nocount, xact_abort on ;
 -- Depends:		Uses DMVs and is therefore 2005+ only.
 --
 -- REVISION HISTORY ---------------------------------------------------------------------------------------------------
--- 02/01/2013	pbeazley	Release refresh.
--- 12/23/2013	pbeazley	Corrected percentage done error.
+-- 02/01/2013	lordbeazley	Release refresh.
+-- 12/23/2013	lordbeazley	Corrected percentage done error.
 --							Added login_time.
 --							Changed system processing filtering.
--- 12/26/2013	pbeazley	No longer dynamic.
--- 02/28/2014	pbeazley	Sort by spid (default), login or host. #mobetta
--- 08/07/2015	pbeazley	Added current database and physical i/o output.
+-- 12/26/2013	lordbeazley	No longer dynamic.
+-- 02/28/2014	lordbeazley	Sort by spid (default), login or host. #mobetta
+-- 08/07/2015	lordbeazley	Added current database and physical i/o output.
 --							Added db, ip, reads, io, waits sort options.
 --							Added filtering (spid, login, host, db, ip). Ah yeeeeeah.
--- 08/17/2015	pbeazley	Added option to show/hide sleeping tasks (all includes system tasks).
--- 08/18/2015	pbeazley	Added sort by time option.
--- 08/20/2015	pbeazley	Added filter and sort by hpid.
--- 04/19/2016	pbeazley	Fixed datediff overflow for really old spids.
--- 07/13/2018	pbeazley	Fixed int overflow for really large cpu loads.
+-- 08/17/2015	lordbeazley	Added option to show/hide sleeping tasks (all includes system tasks).
+-- 08/18/2015	lordbeazley	Added sort by time option.
+-- 08/20/2015	lordbeazley	Added filter and sort by hpid.
+-- 04/19/2016	lordbeazley	Fixed datediff overflow for really old spids.
+-- 07/13/2018	lordbeazley	Fixed int overflow for really large cpu loads.
 -----------------------------------------------------------------------------------------------------------------------
 
 if (@filter is not null and @sort not in ('spid', 'hpid', 'login', 'host', 'db', 'ip')) set @filter = null ;

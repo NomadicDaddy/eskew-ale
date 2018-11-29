@@ -12,7 +12,7 @@
 .EXAMPLE
 	.\Get-ObjectDefinition.ps1 -Instance '(local)' -Database 'master' -Schema 'dbo' -Object 'ConnectionLog'
 .NOTES
-	02/13/2017	pbeazley	Initial release.
+	02/13/2017	lordbeazley	Initial release.
 #>
 [CmdletBinding(SupportsShouldProcess = $false, PositionalBinding = $false, ConfirmImpact = 'Low')]
 Param(

@@ -20,7 +20,7 @@
 .EXAMPLE
 	.\Compare-DatabaseObject.ps1 -SourceInstance '(local)' -SourceDatabase 'db1' -SourceSchema 'dbo' -SourceObject 'pr_test' -TargetInstance 'OTHERSVR' -TargetDatabase 'db1' -TargetSchema 'dbo' -TargetObject 'pr_test'
 .NOTES
-	02/28/2017	pbeazley	Initial release.
+	02/28/2017	lordbeazley	Initial release.
 #>
 [CmdletBinding(SupportsShouldProcess = $false, PositionalBinding = $false, ConfirmImpact = 'Low')]
 Param(
